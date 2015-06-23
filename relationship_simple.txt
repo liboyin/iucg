@@ -1,0 +1,12 @@
+animal
+	livestock
+		cow
+	pet
+		dog
+	person
+small_size
+	dog
+mid_size
+	person
+big_size
+	cow

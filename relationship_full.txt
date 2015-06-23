@@ -1,0 +1,52 @@
+home
+	furniture
+		dining_table
+		chair
+		sofa
+	bottle
+	potted_plant
+	tv_monitor
+transport
+	public_transport
+		boat
+		train
+		aeroplane
+		bus
+	private_transport
+		car
+		bicycle
+		motorbike
+animal
+	livestock
+		cow
+		horse
+		sheep
+	pet
+		dog
+		cat
+		bird
+	person
+small_size
+	bottle
+	potted_plant
+	tv_monitor
+	dog
+	cat
+	bird
+mid_size
+	person
+	bicycle
+	dining_table
+	motorbike
+	chair
+	sofa
+big_size
+	car
+	cow
+	horse
+	sheep
+huge_size
+	boat
+	train
+	aeroplane
+	bus
