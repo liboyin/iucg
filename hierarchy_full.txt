@@ -1,11 +1,11 @@
 home
 	furniture
-		dining_table
+		diningtable
 		chair
 		sofa
 	bottle
-	potted_plant
-	tv_monitor
+	pottedplant
+	tvmonitor
 transport
 	public_transport
 		boat
@@ -28,15 +28,15 @@ animal
 	person
 small_size
 	bottle
-	potted_plant
-	tv_monitor
+	pottedplant
+	tvmonitor
 	dog
 	cat
 	bird
 mid_size
 	person
 	bicycle
-	dining_table
+	diningtable
 	motorbike
 	chair
 	sofa
