@@ -14,16 +14,17 @@ net = caffe.Classifier(model_file=join(data_dir, 'ilsvrc12_deploy.prototxt'),
                        raw_scale=1, image_dims=(227, 227))
 
 with h5py.File(join(data_dir, 'train.h5'), mode='r') as h:
-    X_train = h['data'].value
-    Y_train = h['label'].value
+    X_train = h['X'].value
+    Y_train = h['Y_hierarchy'].value
 X_train = np.swapaxes(np.swapaxes(X_train, 1, 2), 2, 3)  # convert to XY[BGR]
 Phi_train = net.predict(X_train, oversample=False)  # output of neural network, input for svm
 D = Y_train.shape[1]  # number of labels
 
 with h5py.File(join(data_dir, 'test.h5'), mode='r') as h:
-    X_test = h['data'].value
+    X_test = h['X'].value
+X_test = np.swapaxes(np.swapaxes(X_test, 1, 2), 2, 3)  # convert to XY[BGR]
 Phi_test = net.predict(X_test, oversample=False)
-N_test = len(X_test)
+N_test = len(X_test)  # size of testing data
 
 def test_kernel(kernel):
     Y_test = np.zeros((N_test, D), dtype=np.float32)
@@ -31,7 +32,7 @@ def test_kernel(kernel):
         s = SVC(kernel=kernel)
         y = Y_train[:, i] > 0  # convert labels from np.float32 to np.bool
         s.fit(Phi_train, y)
-        Y_test[:, i] = s.decision_function(Phi_test)
+        Y_test[:, i] = s.decision_function(Phi_test).flatten()
     return Y_test
 
 Y = map(test_kernel, ['linear', 'poly', 'rbf'])

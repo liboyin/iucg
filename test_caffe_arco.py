@@ -14,7 +14,8 @@ models = [join(data_dir, 'temp', x) for x in models]
 
 mean_pixel = np.load(join(data_dir, 'ilsvrc12_mean.npy')).mean(axis=(1, 2))
 with h5py.File(join(data_dir, 'test.h5'), mode='r') as h:
-    X = h['data'].value
+    X = h['X'].value
+X = np.swapaxes(np.swapaxes(X, 1, 2), 2, 3)  # convert to XY[BGR]
 
 caffe.set_mode_gpu()
 def test_model(caffemodel):
