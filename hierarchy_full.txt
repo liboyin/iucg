@@ -7,15 +7,14 @@ home
 	pottedplant
 	tvmonitor
 transport
-	public_transport
-		boat
+	land_transport
 		train
-		aeroplane
 		bus
-	private_transport
 		car
 		bicycle
 		motorbike
+	aeroplane
+	boat
 animal
 	livestock
 		cow
