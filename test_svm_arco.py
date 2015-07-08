@@ -31,7 +31,7 @@ def test_kernel(kernel):
         s = SVC(kernel=kernel)
         y = Y_train[:, i] > 0  # convert labels from np.float32 to np.bool
         s.fit(Phi_train, y)
-        Y_test[:, i] = s.predict_proba(Phi_test)
+        Y_test[:, i] = s.decision_function(Phi_test)
     return Y_test
 
 Y = map(test_kernel, ['linear', 'poly', 'rbf'])

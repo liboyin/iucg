@@ -26,27 +26,3 @@ animal
 		cat
 		bird
 	person
-small_size
-	bottle
-	pottedplant
-	tvmonitor
-	dog
-	cat
-	bird
-mid_size
-	person
-	bicycle
-	diningtable
-	motorbike
-	chair
-	sofa
-big_size
-	car
-	cow
-	horse
-	sheep
-huge_size
-	boat
-	train
-	aeroplane
-	bus
