@@ -23,7 +23,7 @@
 
 ##Multiclass Binary Classification
 
-* Caffe only accepts multiclass input from HDF5 layer. For creating HDF5 database, refer to: http://docs.h5py.org/en/latest/high/dataset.html
+* Caffe only accepts multiclass input from HDF5 layer, which only supports float and double data type. For creating HDF5 database, refer to: http://docs.h5py.org/en/latest/high/dataset.html
 * Color images decoded with OpenCV have axis sequence XY[BGR], whereas `caffe.io.load_image` decodes to axis sequence XY[RGB]
 * `ilsvrc_2012_mean.npy` has axis sequence [BGR]XY, where X, Y $\in$ [0,256]. Data type is `np.float64`. Range is [0, 255]
 * Changes required to a Caffe network:
@@ -35,6 +35,41 @@
 
 ## TODO
 * Add leaf accuracy, decompose accuracy to label and size ratio
-* Caffe loss layer: Euclidean or Cross Entropy?
-* In `ilsvrc12_deploy.prototxt`, are layer `relu7` and `dropOut7` required?
-* Need bottomline for thesis
+* Caffe loss layer should be Euclidean instead of than Cross Entropy, as the latter encourages "either this or that", not "both this and that"
+* Need bottomline for thesis!!!
+
+##Dataset Creation
+
+##Caffe Baseline
+Experiment with `my_solver.prototxt`:
+	* Base learning rate 0.0001, and drops by 0.00002 every 10000 iterations:
+| iters | type 0 | type 1 | type 2 | type 3 | type 4 |
+|------:|:------:|:------:|:------:|:------:|:------:|
+|  5000 | 0.3527 | 0.0789 | 0.0789 | 0.1834 | 0.1834 |
+| 10000 | 0.3996 | 0.1567 | 0.1567 | 0.2007 | 0.2007 |
+| 15000 | 0.4103 | 0.1555 | 0.1555 | 0.2013 | 0.2013 |
+| 20000 | 0.4287 | 0.1650 | 0.1650 | 0.2054 | 0.2054 |
+| 25000 | 0.4376 | 0.1674 | 0.1674 | 0.2119 | 0.2119 |
+| 30000 | 0.4352 | 0.1674 | 0.1674 | 0.2102 | 0.2102 |
+| 35000 | 0.4394 | 0.1674 | 0.1674 | 0.2096 | 0.2096 |
+| 40000 | 0.4382 | 0.1704 | 0.1704 | 0.2108 | 0.2108 |
+| 45000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114 |
+| 50000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114 |
+	* Base learning rate is 0.0004, and drops by 0.00004 every 10000 iterations:
+waiting for results, but already better than 45%
+
+##SVM Baseline
+Experiment with `ilsvrc12_deploy.prototxt`:
+	* SVM returns distance to decision plane, threshold set to 0
+	* `fc7` outputs directly to SVM WITHOUT `relu7`:
+| kernel | type 0 | type 1 | type 2 | type 3 | type 4 |
+|-------:|:------:|:------:|:------:|:------:|:------:|
+| linear | 0.5872 | 0.2737 | 0.2737 | 0.5570 | 0.5570 |
+|   poly | 0.6591 | 0.3574 | 0.3574 | 0.7494 | 0.7494 |
+|    rbf | 0.3301 | 0.0017 | 0.0017 | 0.2375 | 0.2375 |
+	* `fc7` WITH `relu7` then to SVM:
+| kernel | type 0 | type 1 | type 2 | type 3 | type 4 |
+|-------:|:------:|:------:|:------:|:------:|:------:|
+| linear | 0.6407 | 0.3343 | 0.3343 | 0.6543 | 0.6543 |
+|   poly | 0.7268 | 0.2880 | 0.2880 | 0.8497 | 0.8497 |
+|    rbf | 0.7292 | 0.3521 | 0.3521 | 0.8616 | 0.8616 |
