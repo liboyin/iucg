@@ -1,6 +1,0 @@
-animal
-	livestock
-		cow
-	pet
-		dog
-	person

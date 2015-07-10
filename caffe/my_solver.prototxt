@@ -1,0 +1,14 @@
+net: "my_train_val.prototxt"
+test_iter: 1000
+test_interval: 5000
+base_lr: 0.00005
+lr_policy: "step"
+gamma: 0.1
+stepsize: 10000
+display: 5000
+max_iter: 50000
+momentum: 0.9
+weight_decay: 0.00001
+snapshot: 5000
+snapshot_prefix: "temp/train"
+solver_mode: GPU
