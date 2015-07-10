@@ -33,7 +33,7 @@
 	4. TEST phase is removed due to the lack of metric to hierarchical classification accuracy
 * Caffe does not support data transformation for HDF5 input. Mean subtraction needs to be done outside. Also, each input image should have axis sequence [BGR]XY, where X, Y $\in$ [0,227], as defined by Caffe models trained on ImageNet
 
-## TODO
+##TODO
 * Decompose accuracy to label and size ratio
 * Top 5 accuracy
 * Need bottomline for thesis!!!
