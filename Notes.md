@@ -1,4 +1,4 @@
-##Caffe on Laptop Ubuntu
+##Caffe on Ubuntu Laptop
 
 * `Python.h` location: `/usr/include/python2.7`
 * `numpy/arrayobject.h` location: `/usr/local/lib/python2.7/dist-packages/numpy/core/include`
@@ -34,51 +34,85 @@
 * Caffe does not support data transformation for HDF5 input. Mean subtraction needs to be done outside. Also, each input image should have axis sequence [BGR]XY, where X, Y $\in$ [0,227], as defined by Caffe models trained on ImageNet
 
 ## TODO
-* Add leaf accuracy, decompose accuracy to label and size ratio
-* Caffe loss layer should be Euclidean instead of than Cross Entropy, as the latter encourages "either this or that", not "both this and that"
+* Decompose accuracy to label and size ratio
+* Top 5 accuracy
 * Need bottomline for thesis!!!
+* Try a newer caffe network, e.g. VGG, GoogLeNet
+* (from Stephen Gould) Hierarchical loss for hierarchical classification
+* Change the SVM output to probability, normalize to $\log\frac{p(x=1)}{p(x=0)}$, then feed to CRF
+* Leaf nodes need a larger weight during inference
 
 ##Dataset Creation
 
 ##Caffe Baseline
 Experiment with `my_solver.prototxt`:
-	* Base learning rate 0.0001, and drops by 0.00002 every 10000 iterations:
-| iters | type 0 | type 1 | type 2 | type 3 | type 4 |
-|------:|:------:|:------:|:------:|:------:|:------:|
-| 10000 | 0.3996 | 0.1567 | 0.1567 | 0.2007 | 0.2007 |
-| 20000 | 0.4287 | 0.1650 | 0.1650 | 0.2054 | 0.2054 |
-| 30000 | 0.4352 | 0.1674 | 0.1674 | 0.2102 | 0.2102 |
-| 40000 | 0.4382 | 0.1704 | 0.1704 | 0.2108 | 0.2108 |
-| 50000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114 |
-	* Base learning rate is 0.0004, and drops by 0.00002 every 5000 iterations:
-| iters | type 0 | type 1 | type 2 | type 3 | type 4 |
-|------:|:------:|:------:|:------:|:------:|:------:|
-| 10000 | 0.3646 | 0.0985 | 0.0985 | 0.1235 | 0.1235 |
-| 20000 | 0.3693 | 0.1009 | 0.1009 | 0.1241 | 0.1241 |
-| 30000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235 |
-| 40000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235 |
-| 50000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235 |
-	* Base learning rate is 0.00005, and drops by 0.00001 every 10000 iterations:
-	* waiting for results...
+
+* Network returns raw score, threshold set to 0.25 (selected by cross validation)
+* Scheme 1: Base learning rate 0.0001, drops by 0.00002 every 10000 iterations
+* Result stored in `test_caffe_1.npy` (waiting)
+```
+iters | type 0 | type 1 | type 2 | type 3 | type 4 
+----- | ------ | ------ | ------ | ------ | ------ 
+10000 | 0.3996 | 0.1567 | 0.1567 | 0.2007 | 0.2007 
+20000 | 0.4287 | 0.1650 | 0.1650 | 0.2054 | 0.2054 
+30000 | 0.4352 | 0.1674 | 0.1674 | 0.2102 | 0.2102 
+40000 | 0.4382 | 0.1704 | 0.1704 | 0.2108 | 0.2108 
+50000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114
+```
+* Scheme 2: Base learning rate is 0.0002 (x2), drops by 0.00004 every 10000 iterations
+* Result stored in `test_caffe_2.npy` (TODO)
+```
+iters | type 0 | type 1 | type 2 | type 3 | type 4
+----- | ------ | ------ | ------ | ------ | ------
+10000 | 0.3646 | 0.0985 | 0.0985 | 0.1235 | 0.1235
+20000 | 0.3693 | 0.1009 | 0.1009 | 0.1241 | 0.1241
+30000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235
+40000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235
+50000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235
+```
+* Scheme 3: Base learning rate is 0.00005 (/2), drops by 0.00001 every 10000 iterations
+* Result stored in `test_caffe_3.npy`
+```
+iters | type 0 | type 1 | type 2 | type 3 | type 4
+----- | ------ | ------ | ------ | ------ | ------
+10000 | 0.3657 | 0.1330 | 0.1330 | 0.3016 | 0.3016
+20000 | 0.4014 | 0.1264 | 0.1264 | 0.2939 | 0.2939
+30000 | 0.4043 | 0.1318 | 0.1318 | 0.2957 | 0.2957
+40000 | 0.4067 | 0.1300 | 0.1300 | 0.2969 | 0.2969
+50000 | 0.4079 | 0.1300 | 0.1300 | 0.2969 | 0.2969
+```
+* Scheme 4: Global base learning rate is 0.00005, drops by 0.00001 every 1000 iterations. Last layer's local base learning rate is 0.0002, drops by 0.00004 every 10000 iterations (defined in `my_train_val.prototxt`)
+* Result stored in `test_caffe_4.npy` (TODO)
+```
+blobs_lr: 0.0002
+weight_decay: 0.00004
+```
 
 ##SVM Baseline
 Experiment with `ilsvrc12_deploy.prototxt`:
-	* SVM returns distance to decision plane, threshold set to 0
-	* `fc7` outputs directly to SVM WITHOUT `relu7`:
-| kernel | type 0 | type 1 | type 2 | type 3 | type 4 |
-|-------:|:------:|:------:|:------:|:------:|:------:|
-| linear | 0.5872 | 0.2737 | 0.2737 | 0.5570 | 0.5570 |
-|   poly | 0.6591 | 0.3574 | 0.3574 | 0.7494 | 0.7494 |
-|    rbf | 0.3301 | 0.0017 | 0.0017 | 0.2375 | 0.2375 |
-	* `fc7` WITH `relu7` then to SVM:
-| kernel | type 0 | type 1 | type 2 | type 3 | type 4 |
-|-------:|:------:|:------:|:------:|:------:|:------:|
-| linear | 0.6407 | 0.3343 | 0.3343 | 0.6543 | 0.6543 |
-|   poly | 0.7268 | 0.2880 | 0.2880 | 0.8497 | 0.8497 |
-|    rbf | 0.7292 | 0.3521 | 0.3521 | 0.8616 | 0.8616 |
-	* CRF result based on `fc7` WITH `relu7` then to SVM:
-| kernel | type 0 | type 1 | type 2 | type 3 | type 4 |
-|-------:|:------:|:------:|:------:|:------:|:------:|
-| linear | 0.4156 | 0.3990 | 0.3990 | 0.8004 | 0.8004 |
-|   poly | 0.3105 | 0.2885 | 0.2885 | 0.8913 | 0.8913 |
-|    rbf | 0.3770 | 0.3551 | 0.3551 | 0.8925 | 0.8925 |
+
+* SVM returns distance to decision plane, threshold set to 0
+* `fc7` outputs directly to SVM WITHOUT `relu7`:
+```
+kernel | type 0 | type 1 | type 2 | type 3 | type 4
+------ | ------ | ------ | ------ | ------ | ------
+linear | 0.5872 | 0.2737 | 0.2737 | 0.5570 | 0.5570
+  poly | 0.6591 | 0.3574 | 0.3574 | 0.7494 | 0.7494
+   rbf | 0.3301 | 0.0017 | 0.0017 | 0.2375 | 0.2375
+```
+* `fc7` WITH `relu7` then to SVM:
+```
+kernel | type 0 | type 1 | type 2 | type 3 | type 4
+------ | ------ | ------ | ------ | ------ | ------
+linear | 0.6407 | 0.3343 | 0.3343 | 0.6543 | 0.6543
+  poly | 0.7268 | 0.2880 | 0.2880 | 0.8497 | 0.8497
+   rbf | 0.7292 | 0.3521 | 0.3521 | 0.8616 | 0.8616
+```
+* CRF result based on `fc7` WITH `relu7` then to SVM:
+```
+kernel | type 0 | type 1 | type 2 | type 3 | type 4
+------ | ------ | ------ | ------ | ------ | ------
+linear | 0.4156 | 0.3990 | 0.3990 | 0.8004 | 0.8004
+  poly | 0.3105 | 0.2885 | 0.2885 | 0.8913 | 0.8913
+   rbf | 0.3770 | 0.3551 | 0.3551 | 0.8925 | 0.8925
+```
