@@ -29,7 +29,7 @@
 * Changes required to a Caffe network:
 	1. Data layer type is `"HDF5Data"`. All transformations are removed. `data_param` is changed to `hdf5_data_param`
 	2. A Softmax layer is inserted between `fc8_pascal` and the loss layer, i.e. Inner product -> Softmax -> Sigmoid Cross Entropy Loss
-	3. Loss layer type is `"SigmoidCrossEntropyLoss"`
+	3. Loss layer type is `"EuclideanLoss"`
 	4. TEST phase is removed due to the lack of metric to hierarchical classification accuracy
 * Caffe does not support data transformation for HDF5 input. Mean subtraction needs to be done outside. Also, each input image should have axis sequence [BGR]XY, where X, Y $\in$ [0,227], as defined by Caffe models trained on ImageNet
 
@@ -56,7 +56,9 @@ Experiment with `my_solver.prototxt`:
 | 45000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114 |
 | 50000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114 |
 	* Base learning rate is 0.0004, and drops by 0.00004 every 10000 iterations:
-waiting for results, but already better than 45%
+	* `test_caffe_prev.npy`
+	* Base learning rate is 0.0004, and drops by 0.00002 every 5000 iterations:
+	* `test_caffe_prev.npy`
 
 ##SVM Baseline
 Experiment with `ilsvrc12_deploy.prototxt`:
@@ -73,3 +75,9 @@ Experiment with `ilsvrc12_deploy.prototxt`:
 | linear | 0.6407 | 0.3343 | 0.3343 | 0.6543 | 0.6543 |
 |   poly | 0.7268 | 0.2880 | 0.2880 | 0.8497 | 0.8497 |
 |    rbf | 0.7292 | 0.3521 | 0.3521 | 0.8616 | 0.8616 |
+	* CRF result based on `fc7` WITH `relu7` then to SVM:
+| kernel | type 0 | type 1 | type 2 | type 3 | type 4 |
+|-------:|:------:|:------:|:------:|:------:|:------:|
+| linear | 0.4156 | 0.3990 | 0.3990 | 0.8004 | 0.8004 |
+|   poly | 0.3105 | 0.2885 | 0.2885 | 0.8913 | 0.8913 |
+|    rbf | 0.3770 | 0.3551 | 0.3551 | 0.8925 | 0.8925 |
