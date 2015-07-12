@@ -49,7 +49,7 @@ Experiment with `my_solver.prototxt`:
 
 * Network returns raw score, threshold set to 0.25 (selected by cross validation)
 * Scheme 1: Base learning rate 0.0001, drops by 0.00002 every 10000 iterations
-* Result stored in `test_caffe_1.npy` (waiting)
+* Result stored in `test_caffe_1.npy` (finished on arco)
 ```
 iters | type 0 | type 1 | type 2 | type 3 | type 4 
 ----- | ------ | ------ | ------ | ------ | ------ 
@@ -60,7 +60,7 @@ iters | type 0 | type 1 | type 2 | type 3 | type 4
 50000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114
 ```
 * Scheme 2: Base learning rate is 0.0002 (x2), drops by 0.00004 every 10000 iterations
-* Result stored in `test_caffe_2.npy` (TODO)
+* Result stored in `test_caffe_2.npy` (finished on arco)
 ```
 iters | type 0 | type 1 | type 2 | type 3 | type 4
 ----- | ------ | ------ | ------ | ------ | ------
@@ -82,11 +82,7 @@ iters | type 0 | type 1 | type 2 | type 3 | type 4
 50000 | 0.4079 | 0.1300 | 0.1300 | 0.2969 | 0.2969
 ```
 * Scheme 4: Global base learning rate is 0.00005, drops by 0.00001 every 1000 iterations. Last layer's local base learning rate is 0.0002, drops by 0.00004 every 10000 iterations (defined in `my_train_val.prototxt`)
-* Result stored in `test_caffe_4.npy` (TODO)
-```
-blobs_lr: 0.0002
-weight_decay: 0.00004
-```
+* Result stored in `test_caffe_4.npy` (TODO: where to put `blobs_lr`?)
 
 ##SVM Baseline
 Experiment with `ilsvrc12_deploy.prototxt`:
