@@ -34,81 +34,115 @@
 * Caffe does not support data transformation for HDF5 input. Mean subtraction needs to be done outside. Also, each input image should have axis sequence [BGR]XY, where X, Y $\in$ [0,227], as defined by Caffe models trained on ImageNet
 
 ##TODO
-* Decompose accuracy to label and size ratio
-* Top 5 accuracy
-* Need bottomline for thesis!!!
-* Try a newer caffe network, e.g. VGG, GoogLeNet
+* Need bottomline for thesis
+* (from Stephen Gould) Try a newer caffe network, e.g. VGG, GoogLeNet
 * (from Stephen Gould) Hierarchical loss for hierarchical classification
-* Change the SVM output to probability, normalize to $\log\frac{p(x=1)}{p(x=0)}$, then feed to CRF
-* Leaf nodes need a larger weight during inference
 
-##Dataset Creation
+##Unary Terms with Caffe
+###Key Queations
 
-##Caffe Baseline
-Experiment with `my_solver.prototxt`:
+1. What is the optimal learning rate?
+2. For raw accuracy, what is the optimal threshold?
+3. For both raw accuracy and CRF, is transformation required?
 
-* Network returns raw score, threshold set to 0.25 (selected by cross validation)
-* Scheme 1: Base learning rate 0.0001, drops by 0.00002 every 10000 iterations
-* Result stored in `test_caffe_1.npy` (finished on arco)
-```
-iters | type 0 | type 1 | type 2 | type 3 | type 4 
------ | ------ | ------ | ------ | ------ | ------ 
-10000 | 0.3996 | 0.1567 | 0.1567 | 0.2007 | 0.2007 
-20000 | 0.4287 | 0.1650 | 0.1650 | 0.2054 | 0.2054 
-30000 | 0.4352 | 0.1674 | 0.1674 | 0.2102 | 0.2102 
-40000 | 0.4382 | 0.1704 | 0.1704 | 0.2108 | 0.2108 
-50000 | 0.4382 | 0.1704 | 0.1704 | 0.2114 | 0.2114
-```
-* Scheme 2: Base learning rate is 0.0002 (x2), drops by 0.00004 every 10000 iterations
-* Result stored in `test_caffe_2.npy` (finished on arco)
-```
-iters | type 0 | type 1 | type 2 | type 3 | type 4
------ | ------ | ------ | ------ | ------ | ------
-10000 | 0.3646 | 0.0985 | 0.0985 | 0.1235 | 0.1235
-20000 | 0.3693 | 0.1009 | 0.1009 | 0.1241 | 0.1241
-30000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235
-40000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235
-50000 | 0.3693 | 0.1009 | 0.1009 | 0.1235 | 0.1235
-```
-* Scheme 3: Base learning rate is 0.00005 (/2), drops by 0.00001 every 10000 iterations
-* Result stored in `test_caffe_3.npy`
-```
-iters | type 0 | type 1 | type 2 | type 3 | type 4
------ | ------ | ------ | ------ | ------ | ------
-10000 | 0.3657 | 0.1330 | 0.1330 | 0.3016 | 0.3016
-20000 | 0.4014 | 0.1264 | 0.1264 | 0.2939 | 0.2939
-30000 | 0.4043 | 0.1318 | 0.1318 | 0.2957 | 0.2957
-40000 | 0.4067 | 0.1300 | 0.1300 | 0.2969 | 0.2969
-50000 | 0.4079 | 0.1300 | 0.1300 | 0.2969 | 0.2969
-```
-* Scheme 4: Global base learning rate is 0.00005, drops by 0.00001 every 1000 iterations. Last layer's local base learning rate is 0.0002, drops by 0.00004 every 10000 iterations (defined in `my_train_val.prototxt`)
-* Result stored in `test_caffe_4.npy` (TODO: where to put `blobs_lr`?)
+###Experiments
 
-##SVM Baseline
-Experiment with `ilsvrc12_deploy.prototxt`:
+Base learning rate 0.0001, drops by 0.00002 every 10000 iterations. Result stored in `test_caffe_1.npy`.
 
-* SVM returns distance to decision plane, threshold set to 0
-* `fc7` outputs directly to SVM WITHOUT `relu7`:
-```
-kernel | type 0 | type 1 | type 2 | type 3 | type 4
------- | ------ | ------ | ------ | ------ | ------
-linear | 0.5872 | 0.2737 | 0.2737 | 0.5570 | 0.5570
-  poly | 0.6591 | 0.3574 | 0.3574 | 0.7494 | 0.7494
-   rbf | 0.3301 | 0.0017 | 0.0017 | 0.2375 | 0.2375
-```
-* `fc7` WITH `relu7` then to SVM:
-```
-kernel | type 0 | type 1 | type 2 | type 3 | type 4
------- | ------ | ------ | ------ | ------ | ------
-linear | 0.6407 | 0.3343 | 0.3343 | 0.6543 | 0.6543
-  poly | 0.7268 | 0.2880 | 0.2880 | 0.8497 | 0.8497
-   rbf | 0.7292 | 0.3521 | 0.3521 | 0.8616 | 0.8616
-```
-* CRF result based on `fc7` WITH `relu7` then to SVM:
-```
-kernel | type 0 | type 1 | type 2 | type 3 | type 4
------- | ------ | ------ | ------ | ------ | ------
-linear | 0.4156 | 0.3990 | 0.3990 | 0.8004 | 0.8004
-  poly | 0.3105 | 0.2885 | 0.2885 | 0.8913 | 0.8913
-   rbf | 0.3770 | 0.3551 | 0.3551 | 0.8925 | 0.8925
-```
+trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
+----- | --------- | ----- | ------ | ------ | ------ | ------ | ------
+none  | 35000 [6] |  0.33 | 0.4406 | 0.1675 | 0.1675 | 0.4561 | 0.4561
+none  | 40000 [7] |  crf  | 0.4175 | 0.4175 | 0.4175 | 0.4175 | 0.4175
+none  | 40000 [7] | wcrf4 | 0.4483 | 0.4483 | 0.4483 | 0.4483 | 0.4483
+tanh  | 35000 [6] |  0.38 | 0.4406 | 0.1710 | 0.1710 | 0.4483 | 0.4483
+tanh  | 25000 [4] |  crf  | 0.4169 | 0.4169 | 0.4169 | 0.4169 | 0.4169
+tanh  | 40000 [7] | wcrf4 | 0.4489 | 0.4489 | 0.4489 | 0.4489 | 0.4489
+
+Base learning rate 0.0002 (x2), drops by 0.00004 every 10000 iterations. Result stored in `test_caffe_2.npy`.
+
+trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
+----- | --------- | ----- | ------ | ------ | ------ | ------ | ------
+none  | 45000 [8] |  0.38 | 0.4276 | 0.2084 | 0.2084 | 0.4863 | 0.4863
+none  | 50000 [9] |  crf  | 0.4151 | 0.4151 | 0.4151 | 0.4151 | 0.4151
+none  | 45000 [8] | wcrf4 | 0.4299 | 0.4299 | 0.4299 | 0.4299 | 0.4299
+tanh  | 40000 [7] |  0.44 | 0.4276 | 0.2203 | 0.2203 | 0.4947 | 0.4947
+tanh  | 40000 [7] |  crf  | 0.4145 | 0.4145 | 0.4145 | 0.4145 | 0.4145
+tanh  | 45000 [8] | wcrf4 | 0.4305 | 0.4305 | 0.4305 | 0.4305 | 0.4305
+
+Base learning rate is 0.00005 (/2), drops by 0.00001 every 10000 iterations. Result stored in `test_caffe_3.npy`.
+
+trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
+----- | --------- | ----- | ------ | ------ | ------ | ------ | ------
+none  | 50000 [9] |  0.29 | 0.4080 | 0.1200 | 0.1200 | 0.3955 | 0.3955
+none  | 40000 [7] |  crf  | 0.3539 | 0.3539 | 0.3539 | 0.3539 | 0.3539
+none  | 50000 [9] | wcrf4 | 0.3925 | 0.3925 | 0.3925 | 0.3925 | 0.3925
+tanh  | 50000 [9] |  0.36 | 0.4080 | 0.1211 | 0.1211 | 0.4311 | 0.4311
+tanh  | 45000 [8] |  crf  | 0.3527 | 0.3527 | 0.3527 | 0.3527 | 0.3527
+tanh  | 40000 [7] | wcrf4 | 0.3919 | 0.3919 | 0.3919 | 0.3919 | 0.3919
+
+Global base learning rate 0.00005 (/2), drops by 0.00001 every 10000 iterations. Last layer's local base learning rate is 10x global, following `models/finetune_flickr_style/train_val.prototxt`. Result stored in `test_caffe_4.npy`
+
+trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
+----- | --------- | ----- | ------ | ------ | ------ | ------ | ------
+none  | 50000 [9] |  0.32 | 0.4495 | 0.1781 | 0.1781 | 0.4365 | 0.4365
+none  | 30000 [5] |  crf  | 0.4412 | 0.4412 | 0.4412 | 0.4412 | 0.4412
+none  | 20000 [3] | wcrf4 | 0.4685 | 0.4685 | 0.4685 | 0.4685 | 0.4685*
+tanh  | 40000 [7] |  0.42 | 0.4501 | 0.1591 | 0.1591 | 0.5107 | 0.5107
+tanh  | 30000 [5] |  crf  | 0.4394 | 0.4394 | 0.4394 | 0.4394 | 0.4394
+tanh  | 20000 [3] | wcrf4 | 0.4679 | 0.4679 | 0.4679 | 0.4679 | 0.4679
+
+
+##Unary Terms with SVM
+###Key Questions
+
+1. Should SVM output distance to decision boundary or probability?
+2. Should probability be normalized to $\log\frac{p(x=1)}{p(x=0)}$?
+3. Should layer `relu7` be included in `ilsvrc12_deploy.prototxt`?
+4. For raw accuracy, what is the optimal threshold?
+
+###Experiments
+
+`fc7` outputs directly to SVM without `relu7`. SVM outputs distance to decision plane. Result stored in `test_svm_1.npy`.
+
+kernel   | thres | type 0 | type 1 | type 2 | type 3 | type 4
+-------- | ----- | ------ | ------ | ------ | ------ | ------
+poly [1] | -0.03 | 0.6591 | 0.3688 | 0.3688 | 0.7387 | 0.7387
+poly [1] |  crf  | 0.3925 | 0.3925 | 0.3925 | 0.8314 | 0.8314
+poly [1] | wcrf4 | 0.4020 | 0.4020 | 0.4020 | 0.8325 | 0.8325
+
+`fc7` to `relu7` then to SVM. SVM outputs distance to decision plane. Result stored in `test_svm_2.npy`.
+
+kernel     | thres | type 0 | type 1 | type 2 | type 3 | type 4
+---------- | ----- | ------ | ------ | ------ | ------ | ------
+rbf [2]    | -0.31 | 0.7292 | 0.4673 | 0.4673 | 0.7892 | 0.7892
+linear [0] |  crf  | 0.3990 | 0.3990 | 0.3990 | 0.8005 | 0.8005
+linear [0] | wcrf4 | 0.4121 | 0.4121 | 0.4121 | 0.7957 | 0.7957
+
+`fc7` outputs directly to SVM without `relu7`. SVM outputs probability. Result stored in `test_svm_3.npy`.
+
+norm  | kernel     | thres | type 0 | type 1 | type 2 | type 3 | type 4
+----- | ---------- | ----- | ------ | ------ | ------ | ------ | ------
+none  | poly [1]   |  0.31 | 0.6502 | 0.3070 | 0.3070 | 0.6467 | 0.6467
+none  | poly [1]   |  crf  | 0.6401 | 0.6401 | 0.6401 | 0.6401 | 0.6401
+none  | poly [1]   | wcrf4 | 0.6615 | 0.6615 | 0.6615 | 0.6615 | 0.6615
+ratio | linear [0] |  0.03 | 0.5950 | 0.0938 | 0.0938 | 0.5095 | 0.5095
+ratio | linear [0] |  crf  | 0.5653 | 0.5653 | 0.5653 | 0.5909 | 0.5909
+ratio | linear [0] | wcrf4 | 0.5897 | 0.5897 | 0.5897 | 0.6099 | 0.6099
+log   | poly [1]   | -0.15 | 0.6502 | 0.1906 | 0.1906 | 0.6669 | 0.6669
+log   | linear [0] |  crf  | 0.1841 | 0.1841 | 0.1841 | 0.8177 | 0.8177
+log   | linear [0] | wcrf4 | 0.1960 | 0.1960 | 0.1960 | 0.8171 | 0.8171
+
+
+`fc7` to `relu7` then to SVM. SVM outputs probability. Result stored in `test_svm_4.npy`.
+
+norm  | kernel  | thres | type 0 | type 1 | type 2 | type 3 | type 4
+----- | ------- | ----- | ------ | ------ | ------ | ------ | ------
+none  | rbf [2] |  0.27 | 0.7340 | 0.5131 | 0.5131 | 0.7524 | 0.7524
+none  | rbf [2] |  crf  | 0.7423 | 0.7423 | 0.7423 | 0.7423 | 0.7423
+none  | rbf [2] | wcrf4 | 0.7500 | 0.7500 | 0.7500 | 0.7500 | 0.7500*
+ratio | rbf [2] |  0.01 | 0.7340 | 0.3391 | 0.3391 | 0.6574 | 0.6574
+ratio | rbf [2] |  crf  | 0.7363 | 0.7363 | 0.7363 | 0.7393 | 0.7393
+ratio | rbf [2] | wcrf4 | 0.7447 | 0.7447 | 0.7447 | 0.7458 | 0.7458
+log   | rbf [2] | -0.18 | 0.7340 | 0.4650 | 0.4650 | 0.8023 | 0.8023
+log   | rbf [2] |  crf  | 0.3937 | 0.3937 | 0.3937 | 0.8931 | 0.8931
+log   | rbf [2] | wcrf4 | 0.3979 | 0.3979 | 0.3979 | 0.8925 | 0.8925
