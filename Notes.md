@@ -37,6 +37,7 @@
 * Need bottomline for thesis
 * (from Stephen Gould) Try a newer caffe network, e.g. VGG, GoogLeNet
 * (from Stephen Gould) Hierarchical loss for hierarchical classification
+* Hypothesis: CRF requires the underlying system to generalize well. Therefore, it shall have a larger impact when the relabelling rate is high (currently 50%), i.e. encourage learning on branching nodes, surpress learning on leaf nodes
 
 ##Unary Terms with Caffe
 ###Key Queations
