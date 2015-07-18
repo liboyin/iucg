@@ -29,10 +29,10 @@ N_test = len(X_test)  # size of testing data
 def test_kernel(kernel):
     Y_test = np.zeros((N_test, D), dtype=np.float32)
     for i in range(0, D):  # train & predict each labels independently
-        s = SVC(kernel=kernel)
+        s = SVC(kernel=kernel, probability=True)
         y = Y_train[:, i] > 0  # convert labels from np.float32 to np.bool
         s.fit(Phi_train, y)
-        Y_test[:, i] = s.decision_function(Phi_test).flatten()
+        Y_test[:, i] = s.predict_proba(Phi_test)[:, 1]
     return Y_test
 
 Y = map(test_kernel, ['linear', 'poly', 'rbf'])

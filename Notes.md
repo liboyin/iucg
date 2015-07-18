@@ -34,10 +34,16 @@
 * Caffe does not support data transformation for HDF5 input. Mean subtraction needs to be done outside. Also, each input image should have axis sequence [BGR]XY, where X, Y $\in$ [0,227], as defined by Caffe models trained on ImageNet
 
 ##TODO
-* Need bottomline for thesis
+* Extension stage 1: Attributed pHEX (bottomline for thesis)
+* Extension stage 2: End-to-end training (bottomline for publication)
+* Tty 100% relabelling rate
+* The log ratio has no issues in the current code.
+$$\operatorname*{argmax}_y\prod_i\exp\left\{\log\frac{p(y_i=1)}{p(y_i=0)}\right\}
+=\operatorname*{argmax}_y\prod_i\frac{p(y_i=1)}{p(y_i=0)}\\
+=\operatorname*{argmax}_y\ \log\prod_i\frac{p(y_i=1)}{p(y_i=0)}
+=\operatorname*{argmax}_y\sum_i\log\frac{p(y_i=1)}{p(y_i=0)}$$
 * (from Stephen Gould) Try a newer caffe network, e.g. VGG, GoogLeNet
 * (from Stephen Gould) Hierarchical loss for hierarchical classification
-* Hypothesis: CRF requires the underlying system to generalize well. Therefore, it shall have a larger impact when the relabelling rate is high (currently 50%), i.e. encourage learning on branching nodes, surpress learning on leaf nodes
 
 ##Unary Terms with Caffe
 ###Key Queations
@@ -48,50 +54,29 @@
 
 ###Experiments
 
-Base learning rate 0.0001, drops by 0.00002 every 10000 iterations. Result stored in `test_caffe_1.npy`.
+id | base_lr | drop_by | step  | local
+-- | ------- | ------- | ----- | -----
+1  | 0.0001  | 0.00002 | 10000 | none
+2  | 0.0002  | 0.00004 | 10000 | none
+3  | 0.00005 | 0.00001 | 10000 | none
+4  | 0.00005 | 0.00001 | 10000 | x10
 
-trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
------ | --------- | ----- | ------ | ------ | ------ | ------ | ------
-none  | 35000 [6] |  0.33 | 0.4406 | 0.1675 | 0.1675 | 0.4561 | 0.4561
-none  | 40000 [7] |  crf  | 0.4175 | 0.4175 | 0.4175 | 0.4175 | 0.4175
-none  | 40000 [7] | wcrf4 | 0.4483 | 0.4483 | 0.4483 | 0.4483 | 0.4483
-tanh  | 35000 [6] |  0.38 | 0.4406 | 0.1710 | 0.1710 | 0.4483 | 0.4483
-tanh  | 25000 [4] |  crf  | 0.4169 | 0.4169 | 0.4169 | 0.4169 | 0.4169
-tanh  | 40000 [7] | wcrf4 | 0.4489 | 0.4489 | 0.4489 | 0.4489 | 0.4489
+Scheme 4 follows `models/finetune_flickr_style/train_val.prototxt`.
 
-Base learning rate 0.0002 (x2), drops by 0.00004 every 10000 iterations. Result stored in `test_caffe_2.npy`.
+id | tanh  | opt_iter  |  raw   | crf
+-- | ----- | --------- | ------ | ------
+1  | False | 35000 [6] | 0.4406 | 0.4454
+1  | True  | 35000 [6] | 0.4406 | 0.4454
+2  | False | 40000 [7] | 0.4276 | 0.4293
+2  | True  | 40000 [7] | 0.4276 | 0.4299
+3  | False | 50000 [9] | 0.4080 | 0.3925
+3  | True  | 50000 [9] | 0.4080 | 0.3919
+4  | False | 20000 [3] | 0.4590 | 0.4685*
+4  | True  | 20000 [3] | 0.4590 | 0.4679
 
-trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
------ | --------- | ----- | ------ | ------ | ------ | ------ | ------
-none  | 45000 [8] |  0.38 | 0.4276 | 0.2084 | 0.2084 | 0.4863 | 0.4863
-none  | 50000 [9] |  crf  | 0.4151 | 0.4151 | 0.4151 | 0.4151 | 0.4151
-none  | 45000 [8] | wcrf4 | 0.4299 | 0.4299 | 0.4299 | 0.4299 | 0.4299
-tanh  | 40000 [7] |  0.44 | 0.4276 | 0.2203 | 0.2203 | 0.4947 | 0.4947
-tanh  | 40000 [7] |  crf  | 0.4145 | 0.4145 | 0.4145 | 0.4145 | 0.4145
-tanh  | 45000 [8] | wcrf4 | 0.4305 | 0.4305 | 0.4305 | 0.4305 | 0.4305
+###An Explanation on Thresholding
 
-Base learning rate is 0.00005 (/2), drops by 0.00001 every 10000 iterations. Result stored in `test_caffe_3.npy`.
-
-trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
------ | --------- | ----- | ------ | ------ | ------ | ------ | ------
-none  | 50000 [9] |  0.29 | 0.4080 | 0.1200 | 0.1200 | 0.3955 | 0.3955
-none  | 40000 [7] |  crf  | 0.3539 | 0.3539 | 0.3539 | 0.3539 | 0.3539
-none  | 50000 [9] | wcrf4 | 0.3925 | 0.3925 | 0.3925 | 0.3925 | 0.3925
-tanh  | 50000 [9] |  0.36 | 0.4080 | 0.1211 | 0.1211 | 0.4311 | 0.4311
-tanh  | 45000 [8] |  crf  | 0.3527 | 0.3527 | 0.3527 | 0.3527 | 0.3527
-tanh  | 40000 [7] | wcrf4 | 0.3919 | 0.3919 | 0.3919 | 0.3919 | 0.3919
-
-Global base learning rate 0.00005 (/2), drops by 0.00001 every 10000 iterations. Last layer's local base learning rate is 10x global, following `models/finetune_flickr_style/train_val.prototxt`. Result stored in `test_caffe_4.npy`
-
-trans | iteration | thres | type 0 | type 1 | type 2 | type 3 | type 4
------ | --------- | ----- | ------ | ------ | ------ | ------ | ------
-none  | 50000 [9] |  0.32 | 0.4495 | 0.1781 | 0.1781 | 0.4365 | 0.4365
-none  | 30000 [5] |  crf  | 0.4412 | 0.4412 | 0.4412 | 0.4412 | 0.4412
-none  | 20000 [3] | wcrf4 | 0.4685 | 0.4685 | 0.4685 | 0.4685 | 0.4685*
-tanh  | 40000 [7] |  0.42 | 0.4501 | 0.1591 | 0.1591 | 0.5107 | 0.5107
-tanh  | 30000 [5] |  crf  | 0.4394 | 0.4394 | 0.4394 | 0.4394 | 0.4394
-tanh  | 20000 [3] | wcrf4 | 0.4679 | 0.4679 | 0.4679 | 0.4679 | 0.4679
-
+Earlier, numerical result from the classifier was thresholded. This has no affect on leaf accuracy, as it's adding a constant in argmax environment. The implication is on hirrarchical accuracy. However, a more natural strategy is to select models with leaf node accuracy, and trace upwards in the hierarchy. This applies to SVM as well.
 
 ##Unary Terms with SVM
 ###Key Questions
@@ -103,47 +88,18 @@ tanh  | 20000 [3] | wcrf4 | 0.4679 | 0.4679 | 0.4679 | 0.4679 | 0.4679
 
 ###Experiments
 
-`fc7` outputs directly to SVM without `relu7`. SVM outputs distance to decision plane. Result stored in `test_svm_1.npy`.
+id | relu7 | output
+-- | ----- | --------
+1  | False | distance
+2  | True  | distance
+3  | False | prob
+4  | True  | prob
 
-kernel   | thres | type 0 | type 1 | type 2 | type 3 | type 4
--------- | ----- | ------ | ------ | ------ | ------ | ------
-poly [1] | -0.03 | 0.6591 | 0.3688 | 0.3688 | 0.7387 | 0.7387
-poly [1] |  crf  | 0.3925 | 0.3925 | 0.3925 | 0.8314 | 0.8314
-poly [1] | wcrf4 | 0.4020 | 0.4020 | 0.4020 | 0.8325 | 0.8325
-
-`fc7` to `relu7` then to SVM. SVM outputs distance to decision plane. Result stored in `test_svm_2.npy`.
-
-kernel     | thres | type 0 | type 1 | type 2 | type 3 | type 4
----------- | ----- | ------ | ------ | ------ | ------ | ------
-rbf [2]    | -0.31 | 0.7292 | 0.4673 | 0.4673 | 0.7892 | 0.7892
-linear [0] |  crf  | 0.3990 | 0.3990 | 0.3990 | 0.8005 | 0.8005
-linear [0] | wcrf4 | 0.4121 | 0.4121 | 0.4121 | 0.7957 | 0.7957
-
-`fc7` outputs directly to SVM without `relu7`. SVM outputs probability. Result stored in `test_svm_3.npy`.
-
-norm  | kernel     | thres | type 0 | type 1 | type 2 | type 3 | type 4
------ | ---------- | ----- | ------ | ------ | ------ | ------ | ------
-none  | poly [1]   |  0.31 | 0.6502 | 0.3070 | 0.3070 | 0.6467 | 0.6467
-none  | poly [1]   |  crf  | 0.6401 | 0.6401 | 0.6401 | 0.6401 | 0.6401
-none  | poly [1]   | wcrf4 | 0.6615 | 0.6615 | 0.6615 | 0.6615 | 0.6615
-ratio | linear [0] |  0.03 | 0.5950 | 0.0938 | 0.0938 | 0.5095 | 0.5095
-ratio | linear [0] |  crf  | 0.5653 | 0.5653 | 0.5653 | 0.5909 | 0.5909
-ratio | linear [0] | wcrf4 | 0.5897 | 0.5897 | 0.5897 | 0.6099 | 0.6099
-log   | poly [1]   | -0.15 | 0.6502 | 0.1906 | 0.1906 | 0.6669 | 0.6669
-log   | linear [0] |  crf  | 0.1841 | 0.1841 | 0.1841 | 0.8177 | 0.8177
-log   | linear [0] | wcrf4 | 0.1960 | 0.1960 | 0.1960 | 0.8171 | 0.8171
-
-
-`fc7` to `relu7` then to SVM. SVM outputs probability. Result stored in `test_svm_4.npy`.
-
-norm  | kernel  | thres | type 0 | type 1 | type 2 | type 3 | type 4
------ | ------- | ----- | ------ | ------ | ------ | ------ | ------
-none  | rbf [2] |  0.27 | 0.7340 | 0.5131 | 0.5131 | 0.7524 | 0.7524
-none  | rbf [2] |  crf  | 0.7423 | 0.7423 | 0.7423 | 0.7423 | 0.7423
-none  | rbf [2] | wcrf4 | 0.7500 | 0.7500 | 0.7500 | 0.7500 | 0.7500*
-ratio | rbf [2] |  0.01 | 0.7340 | 0.3391 | 0.3391 | 0.6574 | 0.6574
-ratio | rbf [2] |  crf  | 0.7363 | 0.7363 | 0.7363 | 0.7393 | 0.7393
-ratio | rbf [2] | wcrf4 | 0.7447 | 0.7447 | 0.7447 | 0.7458 | 0.7458
-log   | rbf [2] | -0.18 | 0.7340 | 0.4650 | 0.4650 | 0.8023 | 0.8023
-log   | rbf [2] |  crf  | 0.3937 | 0.3937 | 0.3937 | 0.8931 | 0.8931
-log   | rbf [2] | wcrf4 | 0.3979 | 0.3979 | 0.3979 | 0.8925 | 0.8925
+id | trans |  kernel  |  raw   | crf
+-- | ----- | -------- | ------ | ------
+1  | False | poly [1] | 0.6591 | 0.4020
+2  | False | rbf [2]  | 0.7292 | 0.3569
+3  | False | poly [1] | 0.6502 | 0.6615
+3  | True  | poly [1] | 0.6502 | 0.1342
+4  | False | rbf [2]  | 0.7340 | 0.7500*
+4  | True  | rbf [2]  | 0.7340 | 0.3979
