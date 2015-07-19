@@ -36,14 +36,15 @@
 ##TODO
 * Extension stage 1: Attributed pHEX (bottomline for thesis)
 * Extension stage 2: End-to-end training (bottomline for publication)
-* Tty 100% relabelling rate
-* The log ratio has no issues in the current code.
+* 100% relabelling rate does not work. This is a support to emphasizing on leaf node accuracy. Next, try NO relabelling. (Waiting for result.)
+* As an alternative to vector as output, feed an image into CNN serveral times with different scalar output/
+* The log ratio has no issues in the current code:
 $$\operatorname*{argmax}_y\prod_i\exp\left\{\log\frac{p(y_i=1)}{p(y_i=0)}\right\}
 =\operatorname*{argmax}_y\prod_i\frac{p(y_i=1)}{p(y_i=0)}\\
 =\operatorname*{argmax}_y\ \log\prod_i\frac{p(y_i=1)}{p(y_i=0)}
 =\operatorname*{argmax}_y\sum_i\log\frac{p(y_i=1)}{p(y_i=0)}$$
-* (from Stephen Gould) Try a newer caffe network, e.g. VGG, GoogLeNet
-* (from Stephen Gould) Hierarchical loss for hierarchical classification
+* (from Stephen Gould) Try a newer caffe network, e.g. VGG, GoogLeNet.
+* (from Stephen Gould) For CNN, tierarchical loss for hierarchical classification. (Similar idea used in CRF.)
 
 ##Unary Terms with Caffe
 ###Key Queations
