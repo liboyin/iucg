@@ -36,8 +36,8 @@
 ##TODO
 * Extension stage 1: Attributed pHEX (bottomline for thesis)
 * Extension stage 2: End-to-end training (bottomline for publication)
-* 100% relabelling rate does not work. This is a support to emphasizing on leaf node accuracy. Next, try NO relabelling. (Waiting for result.)
-* As an alternative to vector as output, feed an image into CNN serveral times with different scalar output/
+* 100% relabelling rate does not work. This is a support to emphasizing leaf node accuracy. NO relabelling gives 0.5107/0.5053 on Caffe scheme 4, and 0.7506/0.7518 on SVM scheme 4.
+* As an alternative to vector as output, feed an image into CNN serveral times with different scalar output.
 * The log ratio has no issues in the current code:
 $$\operatorname*{argmax}_y\prod_i\exp\left\{\log\frac{p(y_i=1)}{p(y_i=0)}\right\}
 =\operatorname*{argmax}_y\prod_i\frac{p(y_i=1)}{p(y_i=0)}\\
