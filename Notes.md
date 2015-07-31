@@ -52,17 +52,17 @@ Caffe setup: `base_lr=0.00005, drop_by=0.00001, step=10000, local=x5`
 
 id | setup
 -- | ------
-1  | Softmax with subset of training data labeled to leaf nodes (`train_leaf.[split].h5`)
-2  | Softmax with complete set of training data (`train.[split].h5`)
+1  | Softmax with subset of training data labeled to leaf nodes (`train_leaf.[relabel].h5`)
+2  | Softmax with complete set of training data (`train.[relabel].h5`)
 3  | Independent prediction score
 4  | Independent prediction score + original CRF
 5  | Independent prediction to probability
 6  | Independent prediction to probability + original CRF
-7  | Independent prediction to probability + positive & negative CRF
+7  | Independent prediction to probability + positive-negative CRF
 
 id |   0%   |  50%   |  90%
 -- | ------ | ------ | ------
-1  | 0.0000 | 0.0000 | 0.0000
+1  |   n/a  | 0.0000 | 0.0000
 2  | 0.0000 | 0.0000 | 0.0000
 3  | 0.0000 | 0.0000 | 0.0000
 4  | 0.0000 | 0.0000 | 0.0000
@@ -107,7 +107,7 @@ id | setup
 2  | Distance to decision boundary + original CRF
 3  | Probability
 4  | Probability + original CRF
-5  | Probability + positive & negative CRF
+5  | Probability + positive-negative CRF
 
 id |   0%   |  50%   |  90%
 -- | ------ | ------ | ------

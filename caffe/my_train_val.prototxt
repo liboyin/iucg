@@ -354,6 +354,12 @@ layer {
   }
 }
 layer {
+  name: "sigmoid"
+  type: "Sigmoid"
+  bottom: "fc8_pascal"
+  top: "fc8_pascal"
+}
+layer {
   name: "loss_pascal"
   type: "EuclideanLoss"
   bottom: "fc8_pascal"

@@ -4,7 +4,7 @@ import numpy as np
 from os.path import join
 from sklearn.svm import SVC
 
-data_dir = '../pascal12/'  # python called from /data2/libo/caffe/python
+data_dir = '../pascal12/'  # python called from CAFFEROOT/caffe/python
 mean_pixel = np.load(join(data_dir, 'ilsvrc12_mean.npy')).mean(axis=(1, 2))
 
 caffe.set_mode_gpu()

@@ -5,7 +5,7 @@ import re
 from os import listdir
 from os.path import join
 
-data_dir = '../pascal12/'  # python called from /data2/libo/caffe/python
+data_dir = '../pascal12/'  # python called from CAFFEROOT/caffe/python
 models = listdir(join(data_dir, 'temp'))
 models = filter(lambda x: x.endswith('caffemodel'), models)
 iters = [int(re.findall('\d+', x)[0]) for x in models]
