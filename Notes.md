@@ -54,21 +54,19 @@ id | setup
 -- | ------
 1  | Softmax with subset of training data labeled to leaf nodes (`train_leaf.[relabel].h5`)
 2  | Softmax with complete set of training data (`train.[relabel].h5`)
-3  | Independent prediction score
-4  | Independent prediction score + original CRF
-5  | Independent prediction to probability
-6  | Independent prediction to probability + original CRF
-7  | Independent prediction to probability + positive-negative CRF
+3  | Independent prediction score + original CRF
+4  | Independent prediction to probability (sigmoid)
+5  | Independent prediction to probability + original CRF
+6  | Independent prediction to probability + positive-negative CRF
 
-id |   0%   |  50%   |  90%
+id |   0%   |   50%  |   90%
 -- | ------ | ------ | ------
-1  |   n/a  | 0.0000 | 0.0000
-2  | 0.0000 | 0.0000 | 0.0000
-3  | 0.0000 | 0.0000 | 0.0000
-4  | 0.0000 | 0.0000 | 0.0000
-5  | 0.0000 | 0.0000 | 0.0000
-6  | 0.0000 | 0.0000 | 0.0000
-7  | 0.0000 | 0.0000 | 0.0000
+1  |   n/a  | 0.7197 | 0.6733
+2  | 0.7244 | 0.6828 | 0.4073
+3  | 0.7274 | 0.6852 | 0.4845
+4  | 0.7244 | 0.6828 | 0.4073
+5  | 0.7226 | 0.6823 | 0.4328
+6  | 0.7280 | 0.6864 | 0.4893
 
 ###Legacy: Experiments for Optimal LR
 
@@ -111,11 +109,11 @@ id | setup
 
 id |   0%   |  50%   |  90%
 -- | ------ | ------ | ------
-1  | 0.0000 | 0.0000 | 0.0000
-2  | 0.0000 | 0.0000 | 0.0000
-3  | 0.0000 | 0.0000 | 0.0000
-4  | 0.0000 | 0.0000 | 0.0000
-5  | 0.0000 | 0.0000 | 0.0000
+1  | 0.7648 | 0.7060 | 0.5320
+2  | 0.7612 | 0.7096 | 0.6454
+3  | 0.7666 | 0.6823 | 0.5338
+4  | 0.7624 | 0.7072 | 0.5676
+5  | 0.7648 | 0.7137 | 0.6282
 
 ###An Explanation on `tanh` Transformation
 
