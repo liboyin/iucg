@@ -21,7 +21,7 @@ layer {
     phase: TEST
   }
   hdf5_data_param {
-    source: "test.txt"
+    source: "val.txt"
     batch_size: 15
   }
 }
