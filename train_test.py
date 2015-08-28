@@ -1,22 +1,20 @@
 import caffe
 import h5py
-import itertools
 import numpy as np
 import pickle
 import re
 import subprocess
-from multiprocessing import Pool
 from os import listdir, rename
 from os.path import join
 from scipy.special import expit as sigmoid
-from sklearn.svm import SVC
+from svm_array import SvmArray
 
 caffe.set_mode_gpu()
 legal_schemes = {'caffe': frozenset(['softmax', 'crf', 'sigmoid', 'sigmoid_crf', 'sigmoid_pncrf']),
                  'svm': frozenset(['dist', 'dist_crf', 'prob', 'prob_crf', 'prob_pncrf'])}
 data_dir = '../pascal12/'
-svm_kernels = ['linear', 'poly', 'rbf']
-svm_global, svm_X_global, svm_Y_global = None, None, None
+with open('hex.pickle', mode='rb') as h:  # hex.pickle located at CAFFEROOT/python
+    hex_data = pickle.load(h)
 
 
 def read_hdf5(path, hierarchy=False):
@@ -55,7 +53,7 @@ def get_accuracy(Y_predict, Y_truth):
     :param Y_truth: N ground truth labels.
     """
     if Y_predict.dtype == bool:
-        return float(np.count_nonzero(Y_predict[:, Y_truth])) / len(Y_predict)
+        return float(np.count_nonzero(Y_predict[np.arange(len(Y_predict)), Y_truth])) / len(Y_predict)  # advanced indexing
     return float(np.count_nonzero(Y_predict[:, :20].argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
@@ -71,7 +69,7 @@ def confusion_matrix(Y_predict, Y_truth):
     for i, y in enumerate(Y_predict):
         cm[Y_truth[i], y[:20].argmax()] += 1  # works for both bool and numerical y
     accuracy = cm.trace() / len(Y_predict)
-    return cm / cm.sum(axis=0)[:, None], accuracy
+    return cm / cm.sum(axis=0)[:, None], accuracy  # transpose vector to 2d array
 
 
 def to_crf(Y, state_space, pos_neg):
@@ -90,29 +88,6 @@ def to_crf(Y, state_space, pos_neg):
     if pos_neg:
         return np.array(map(pn_crf_step, Y), dtype=bool)
     return np.array(map(crf_step, Y), dtype=bool)
-
-
-def parallel_map(func, source, processes=8):
-    pool = Pool(processes)
-    results = pool.map(func, source)
-    pool.close()  # indicates no more input data, not the close of pool
-    pool.join()
-    return results
-
-
-def svm_fit(coord):
-    i, j = coord
-    svm_global[i][j].fit(svm_X_global, svm_Y_global[:, j])
-
-
-def svm_predict_dist(coord):
-    i, j = coord
-    return svm_global[i][j].decision_function(svm_X_global)
-
-
-def svm_predict_prob(coord):
-    i, j = coord
-    return svm_global[i][j].predict_proba(svm_X_global)
 
 
 class TrainTestTask:
@@ -136,10 +111,11 @@ class TrainTestTask:
         self.X_val, self.Y_val = read_hdf5(join(data_dir, 'val.h5'))
         self.X_test, self.Y_test = read_hdf5(join(data_dir, 'test.h5'))
         # load state space
-        with open('hex.pickle', mode='rb') as h:  # hex.pickle located at CAFFEROOT/python
-            hex_data = pickle.load(h)
         self.state_space = filter(lambda x: x[:20].any(), hex_data['state_space'])  # limit state space to leaf node
         self.mean_pixel = np.load(join(data_dir, 'ilsvrc12_mean.npy')).mean(axis=(1, 2))
+
+    def __enter__(self):
+        pass
 
     def train_test_caffe(self):
         def val_test(func_Y):
@@ -186,15 +162,11 @@ class TrainTestTask:
 
     def train_test_svm(self):
         def val_test(func_Y, out):
-            assert out == 'dist' or out == 'proba'
             opt_kernel = np.argmax([get_accuracy(Y, self.Y_val) for Y in map(func_Y, kernel_Y)])
             if opt_kernel in kernel_predict:  # cache @Y_predict
                 Y_predict = kernel_predict[opt_kernel]
             else:
-                if out == 'dist':
-                    Y_predict = np.swapaxes(parallel_map(svm_predict_dist, svm_X_global), 0, 1)
-                else:  # out == 'proba'
-                    Y_predict = np.swapaxes(parallel_map(svm_predict_prob, svm_X_global), 0, 1)
+                Y_predict = svm.predict(Phi_test, out, kernel=opt_kernel, parallel=True)
                 kernel_predict[opt_kernel] = Y_predict
             cm, accuracy = confusion_matrix(func_Y(Y_predict), self.Y_test)
             return opt_kernel, accuracy, cm
@@ -206,44 +178,29 @@ class TrainTestTask:
         Phi_train = net.predict(X_train, oversample=False)
         Phi_val = net.predict(self.X_val, oversample=False)
         Phi_test = net.predict(self.X_test, oversample=False)
-        # initiate svm array
+        # train svm array
         svm_scheme = self.test_scheme['svm']
         is_prob = any('prob' in x for x in svm_scheme)
-        D = Y_train.shape[1]  # number of total labels
-        svm = [[SVC(kernel=k, probability=is_prob) for _ in range(0, D)] for k in svm_kernels]  # K * D svm array
-        # set global pointers to local data
-        global svm_global, svm_X_global, svm_Y_global
-        svm_global = svm
-        svm_X_global = Phi_train
-        svm_Y_global = Y_train
-        # train svm array on Phi
-        coordinates = list(itertools.product(range(0, len(svm_kernels)), range(0, D)))  # always restart iteration
-        parallel_map(svm_fit, coordinates)  # no return value
-        svm_Y_global = None
+        svm = SvmArray(D=Y_train.shape[1], proba=is_prob)
+        svm.fit(Phi_train, Y_train, parallel=True)
         # get results on val. For each test scheme, choose optimal kernel, calculate accuracy and confusion matrix
-        kernel_predict = dict()  # dict<int(kernel), array(Y_predict)>
-        results = dict()  # dict<str(test), tuple<int(opt_kernel), float(accuracy), array(confusion_matrix)>>
+        results = dict()
         if any('dist' in x for x in svm_scheme):
-            svm_X_global = Phi_val
-            kernel_Y = np.swapaxes(parallel_map(svm_predict_dist, coordinates), 1, 2)  # K * N * D array
-            svm_X_global = Phi_test
+            kernel_predict = dict()
+            kernel_Y = svm.predict(Phi_val, out='dist', parallel=True)
             if 'dist' in svm_scheme:
                 results['svm.dist'] = val_test(id, out='dist')
             if 'dist_crf' in svm_scheme:
                 results['svm.dist_crf'] = val_test(lambda Y: to_crf(Y, self.state_space, pos_neg=False), out='dist')
-            svm_X_global = None
-        kernel_predict = dict()  # reset cache
         if is_prob:
-            svm_X_global = Phi_val
-            kernel_Y = np.swapaxes(parallel_map(svm_predict_prob, coordinates), 1, 2)
-            svm_X_global = Phi_test
+            kernel_predict = dict()
+            kernel_Y = svm.predict(Phi_val, out='proba', parallel=True)
             if 'prob' in svm_scheme:
                 results['svm.prob'] = val_test(sigmoid, out='proba')
             if 'prob_crf' in svm_scheme:
                 results['svm.prob_crf'] = val_test(lambda Y: to_crf(sigmoid(Y), self.state_space, pos_neg=False), out='proba')
             if 'prob_pncrf' in svm_scheme:
                 results['svm.prob_pncrf'] = val_test(lambda Y: to_crf(sigmoid(Y), self.state_space, pos_neg=True), out='proba')
-            svm_X_global = None
         return results
 
     def train_test(self):
@@ -254,18 +211,16 @@ class TrainTestTask:
             results.update(self.train_test_svm())
         return results
 
-    def __close__(self):
+    def __exit__(self, type, value, traceback):
         rename(self.path_temp, self.path_back)
 
 
 for f in ['train.50.leaf', 'train.90.leaf']:
     with TrainTestTask(f, {'caffe': {'softmax'}}) as t:
-        results = t.train_test()
         with open(f + '.pickle', mode='wb') as h:
-            pickle.dump(results, h)
+            pickle.dump(t.train_test(), h)
 for f in ['train.0', 'train.50', 'train.90']:
     with TrainTestTask(f, {'caffe': {'softmax', 'crf', 'sigmoid', 'sigmoid_crf', 'sigmoid_pncrf'},
                        'svm': {'dist', 'dist_crf', 'prob', 'prob_crf', 'prob_pncrf'}}) as t:
-        results = t.train_test()
         with open(f + '.pickle', mode='wb') as h:
-            pickle.dump(results, h)
+            pickle.dump(t.train_test(), h)
