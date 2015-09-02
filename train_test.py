@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import re
 import subprocess
+import time
 from os import listdir, rename
 from os.path import join
 from scipy.special import expit as sigmoid
@@ -61,7 +62,7 @@ def confusion_matrix(Y_predict, Y_truth):
     """
     Accuracy is also provided in @get_accuracy. However, that accuracy-only implementation is faster.
     :param Y_predict: N * D array of prediction. Data type may be either numerical or boolean.
-    :param Y_truth: N ground truth labels.
+    :param Y_truth: N ground truth labels. Must contain at least one instance for each class.
     :return: cm: D * D confusion matrix.
     :return: accuracy: leaf accuracy.
     """
@@ -80,7 +81,7 @@ def to_crf(Y, state_space, pos_neg):
     :return: N * D boolean array of prediction. Each prediction is from @self.state_space.
     """
     def crf_step(y):
-        scores = map(lambda s: np.log(y[s]).sum(), state_space)
+        scores = map(lambda s: np.log(y[s]).sum(), state_space)  # TODO: log 0 error
         return state_space[np.argmax(scores)]
     def pn_crf_step(y):  # requires predictions to be P(y_i=1)
         scores = map(lambda s: np.log(y[s]).sum() + np.log(1 - y[np.logical_not(s)]).sum(), state_space)
@@ -103,10 +104,9 @@ class TrainTestTask:
             assert len(vs) > 0  # non-empty classifier config
             assert all(v in legal_schemes[k] for v in vs)  # check all configs
         self.test_scheme = test_scheme
-        # rename training data to 'train.h5'. rename back in __close__
+        # prepare original and temp name. Actual renaming is in __enter__ and __exit__
         self.path_back = join(data_dir, train_data + '.h5')
         self.path_temp = join(data_dir, 'train.h5')
-        rename(self.path_back, self.path_temp)
         # prepare val & test data
         self.X_val, self.Y_val = read_hdf5(join(data_dir, 'val.h5'))
         self.X_test, self.Y_test = read_hdf5(join(data_dir, 'test.h5'))
@@ -114,8 +114,9 @@ class TrainTestTask:
         self.state_space = filter(lambda x: x[:20].any(), hex_data['state_space'])  # limit state space to leaf node
         self.mean_pixel = np.load(join(data_dir, 'ilsvrc12_mean.npy')).mean(axis=(1, 2))
 
-    def __enter__(self):
-        pass
+    def __enter__(self):  # renames back in __exit__
+        rename(self.path_back, self.path_temp)
+        return self
 
     def train_test_caffe(self):
         def val_test(func_Y):
@@ -123,6 +124,9 @@ class TrainTestTask:
             Chooses optimal iteration of Caffe training on validation set, and evaluates model on test set.
             :param func_Y: N * D -> N * D function. Applied to raw Caffe output.
             """
+            m = np.array(list(map(lambda Y: Y, iter_Y)))
+            print m.shape, m.dtype
+            
             opt_iter = np.argmax([get_accuracy(Y, self.Y_val) for Y in map(func_Y, iter_Y)])
             if opt_iter in iter_Y_predict:
                 Y_predict = iter_Y_predict[opt_iter]
@@ -134,10 +138,8 @@ class TrainTestTask:
             cm, accuracy = confusion_matrix(func_Y(Y_predict), self.Y_test)
             return opt_iter, accuracy, cm
         # train caffe
-        train_cmd = ' '.join(['./../build/tools/caffe', 'train',
-                              '--solver=' + str(join(data_dir, 'my_solver.prototxt')),
-                              '--weights=' + str(join(data_dir, 'ilsvrc12_trained.caffemodel'))])
-        subprocess.call(train_cmd, shell=True)  # blocks until complete
+#        train_cmd = './../build/tools/caffe train --solver=my_solver.prototxt --weights=ilsvrc12_trained.caffemodel'
+#        subprocess.Popen(train_cmd, shell=True, cwd=data_dir).wait()
         _, caffemodels = get_iter_caffemodel()
         # get results on val
         my_deploy = join(data_dir, 'my_deploy.prototxt')
@@ -149,7 +151,7 @@ class TrainTestTask:
         results = dict()  # dict<str(test), tuple<int(opt_iter), float(accuracy), array(confusion_matrix)>>
         caffe_scheme = self.test_scheme['caffe']
         if 'softmax' in caffe_scheme:
-            results['caffe.softmax'] = val_test(id)
+            results['caffe.softmax'] = val_test(lambda Y: Y)
         if 'crf' in caffe_scheme:
             results['caffe.crf'] = val_test(lambda Y: to_crf(Y, self.state_space, pos_neg=False))
         if 'sigmoid' in caffe_scheme:
@@ -189,7 +191,7 @@ class TrainTestTask:
             kernel_predict = dict()
             kernel_Y = svm.predict(Phi_val, out='dist', parallel=True)
             if 'dist' in svm_scheme:
-                results['svm.dist'] = val_test(id, out='dist')
+                results['svm.dist'] = val_test(lambda Y: Y, out='dist')
             if 'dist_crf' in svm_scheme:
                 results['svm.dist_crf'] = val_test(lambda Y: to_crf(Y, self.state_space, pos_neg=False), out='dist')
         if is_prob:
@@ -205,8 +207,8 @@ class TrainTestTask:
 
     def train_test(self):
         results = dict()
-        if 'caffe' in self.test_scheme:
-            results.update(self.train_test_caffe())
+       if 'caffe' in self.test_scheme:
+           results.update(self.train_test_caffe())
         if 'svm' in self.test_scheme:
             results.update(self.train_test_svm())
         return results
@@ -214,13 +216,18 @@ class TrainTestTask:
     def __exit__(self, type, value, traceback):
         rename(self.path_temp, self.path_back)
 
-
-for f in ['train.50.leaf', 'train.90.leaf']:
-    with TrainTestTask(f, {'caffe': {'softmax'}}) as t:
-        with open(f + '.pickle', mode='wb') as h:
-            pickle.dump(t.train_test(), h)
+print 'started: {}'.format(time.ctime())
+# TODO: add support for val.leaf & test.leaf
+# for f in ['train.50.leaf', 'train.90.leaf']:
+#    with TrainTestTask(f, {'caffe': {'softmax'}}) as t:
+#        results = t.train_test()
+#        with open(f + '.pickle', mode='wb') as h:
+#            pickle.dump(results, h)
+#    print '{} finished: '.format(f, time.ctime())
 for f in ['train.0', 'train.50', 'train.90']:
     with TrainTestTask(f, {'caffe': {'softmax', 'crf', 'sigmoid', 'sigmoid_crf', 'sigmoid_pncrf'},
                        'svm': {'dist', 'dist_crf', 'prob', 'prob_crf', 'prob_pncrf'}}) as t:
+        results = t.train_test()
         with open(f + '.pickle', mode='wb') as h:
-            pickle.dump(t.train_test(), h)
+            pickle.dump(results, h)
+    print '{} finished: '.format(f, time.ctime())

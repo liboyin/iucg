@@ -1,30 +1,23 @@
 import itertools
+import multiprocessing
 import numpy as np
-from multiprocessing import Pool
 from sklearn.svm import SVC
 
 kernels = ['linear', 'poly', 'rbf']
+pool = multiprocessing.Pool(8)
 
 
-def parallel_map(func, source, processes=8):
-    pool = Pool(processes)
-    results = pool.map(func, source)
-    pool.close()  # indicates no more input data, not the close of pool
-    pool.join()
-    return results
-
-
-def svm_fit(*args):
+def svm_fit(args):
     svm, (i, j), X, Y = args
     svm[i][j].fit(X, Y[:, j])
 
 
-def svm_predict_dist(*args):
+def svm_predict_dist(args):
     svm, (i, j), X = args
     return svm[i][j].decision_function(X)
 
 
-def svm_predict_proba(*args):
+def svm_predict_proba(args):
     svm, (i, j), X = args
     return svm[i][j].predict_proba(X)
 
@@ -35,26 +28,25 @@ class SvmArray:
         self.svm = [[SVC(kernel=k, probability=proba) for _ in range(0, D)] for k in kernels]  # K * D svm array
 
     def fit(self, X, Y, parallel=False):
-        coords = itertools.product(range(0, len(kernels)), range(0, self.D))
-        n = len(coords)
-        svm = [self.svm] * n
-        Xs = [X] * n
-        Ys = [Y] * n
-        f_map = parallel_map if parallel else map
-        f_map(svm_fit, zip(svm, coords, Xs, Ys))
+        def args():
+            for c in coords:
+                yield self.svm, c, X, Y
+        coords = itertools.product(range(0, len(kernels)), range(0, self.D))  # if iterating more than once, use list
+        f_map = pool.map if parallel else map
+        map(svm_fit, args())
 
     def predict(self, X, out, kernel=None, parallel=False):
+        def args():
+            for c in coords:
+                yield self.svm, c, X
         assert out == 'proba' or out == 'dist'
         if kernel:  # is not None
             coords = itertools.product([kernel], range(0, self.D))
-        else:
+        else:  # all kernels
             coords = itertools.product(range(0, len(kernels)), range(0, self.D))
-        n = len(coords)
-        svm = [self.svm] * n
-        Xs = [X] * n
-        f_map = parallel_map if parallel else map
+        f_map = pool.map if parallel else map
         f_predict = svm_predict_proba if out == 'proba' else svm_predict_dist
-        Y = f_map(f_predict, zip(svm, coords, Xs))
+        Y = f_map(f_predict, args())
         if kernel:  # is not None
             return np.swapaxes(Y, 0, 1)  # D * N -> N * D
         else:  # all kernels
@@ -74,6 +66,7 @@ class SvmArray:
 #     def __enter__(self):
 #         for name, value in self.temp.items():
 #             globals()[name] = value
+#         return self
 #
 #     def __exit__(self, type, value, traceback):
 #         for name, value in self.backup.items():
