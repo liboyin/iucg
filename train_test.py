@@ -124,9 +124,6 @@ class TrainTestTask:
             Chooses optimal iteration of Caffe training on validation set, and evaluates model on test set.
             :param func_Y: N * D -> N * D function. Applied to raw Caffe output.
             """
-            m = np.array(list(map(lambda Y: Y, iter_Y)))
-            print m.shape, m.dtype
-            
             opt_iter = np.argmax([get_accuracy(Y, self.Y_val) for Y in map(func_Y, iter_Y)])
             if opt_iter in iter_Y_predict:
                 Y_predict = iter_Y_predict[opt_iter]
@@ -138,8 +135,8 @@ class TrainTestTask:
             cm, accuracy = confusion_matrix(func_Y(Y_predict), self.Y_test)
             return opt_iter, accuracy, cm
         # train caffe
-#        train_cmd = './../build/tools/caffe train --solver=my_solver.prototxt --weights=ilsvrc12_trained.caffemodel'
-#        subprocess.Popen(train_cmd, shell=True, cwd=data_dir).wait()
+        train_cmd = './../build/tools/caffe train --solver=my_solver.prototxt --weights=ilsvrc12_trained.caffemodel'
+        subprocess.Popen(train_cmd, shell=True, cwd=data_dir).wait()
         _, caffemodels = get_iter_caffemodel()
         # get results on val
         my_deploy = join(data_dir, 'my_deploy.prototxt')
@@ -151,7 +148,7 @@ class TrainTestTask:
         results = dict()  # dict<str(test), tuple<int(opt_iter), float(accuracy), array(confusion_matrix)>>
         caffe_scheme = self.test_scheme['caffe']
         if 'softmax' in caffe_scheme:
-            results['caffe.softmax'] = val_test(lambda Y: Y)
+            results['caffe.softmax'] = val_test(lambda Y: Y)  # id is object memory address in CPython, not identity
         if 'crf' in caffe_scheme:
             results['caffe.crf'] = val_test(lambda Y: to_crf(Y, self.state_space, pos_neg=False))
         if 'sigmoid' in caffe_scheme:
@@ -168,7 +165,7 @@ class TrainTestTask:
             if opt_kernel in kernel_predict:  # cache @Y_predict
                 Y_predict = kernel_predict[opt_kernel]
             else:
-                Y_predict = svm.predict(Phi_test, out, kernel=opt_kernel, parallel=True)
+                Y_predict = svm.predict(Phi_test, out, kernel=opt_kernel)
                 kernel_predict[opt_kernel] = Y_predict
             cm, accuracy = confusion_matrix(func_Y(Y_predict), self.Y_test)
             return opt_kernel, accuracy, cm
@@ -180,23 +177,24 @@ class TrainTestTask:
         Phi_train = net.predict(X_train, oversample=False)
         Phi_val = net.predict(self.X_val, oversample=False)
         Phi_test = net.predict(self.X_test, oversample=False)
+        print 'Finished preparing Phi'
         # train svm array
         svm_scheme = self.test_scheme['svm']
         is_prob = any('prob' in x for x in svm_scheme)
         svm = SvmArray(D=Y_train.shape[1], proba=is_prob)
-        svm.fit(Phi_train, Y_train, parallel=True)
+        svm.fit(Phi_train, Y_train)
         # get results on val. For each test scheme, choose optimal kernel, calculate accuracy and confusion matrix
         results = dict()
         if any('dist' in x for x in svm_scheme):
             kernel_predict = dict()
-            kernel_Y = svm.predict(Phi_val, out='dist', parallel=True)
+            kernel_Y = svm.predict(Phi_val, out='dist')
             if 'dist' in svm_scheme:
                 results['svm.dist'] = val_test(lambda Y: Y, out='dist')
             if 'dist_crf' in svm_scheme:
                 results['svm.dist_crf'] = val_test(lambda Y: to_crf(Y, self.state_space, pos_neg=False), out='dist')
         if is_prob:
             kernel_predict = dict()
-            kernel_Y = svm.predict(Phi_val, out='proba', parallel=True)
+            kernel_Y = svm.predict(Phi_val, out='proba')
             if 'prob' in svm_scheme:
                 results['svm.prob'] = val_test(sigmoid, out='proba')
             if 'prob_crf' in svm_scheme:
@@ -207,8 +205,8 @@ class TrainTestTask:
 
     def train_test(self):
         results = dict()
-       if 'caffe' in self.test_scheme:
-           results.update(self.train_test_caffe())
+        # if 'caffe' in self.test_scheme:
+        #     results.update(self.train_test_caffe())
         if 'svm' in self.test_scheme:
             results.update(self.train_test_svm())
         return results
@@ -217,8 +215,7 @@ class TrainTestTask:
         rename(self.path_temp, self.path_back)
 
 print 'started: {}'.format(time.ctime())
-# TODO: add support for val.leaf & test.leaf
-# for f in ['train.50.leaf', 'train.90.leaf']:
+#for f in ['train.50.leaf', 'train.90.leaf']:
 #    with TrainTestTask(f, {'caffe': {'softmax'}}) as t:
 #        results = t.train_test()
 #        with open(f + '.pickle', mode='wb') as h:
@@ -227,7 +224,7 @@ print 'started: {}'.format(time.ctime())
 for f in ['train.0', 'train.50', 'train.90']:
     with TrainTestTask(f, {'caffe': {'softmax', 'crf', 'sigmoid', 'sigmoid_crf', 'sigmoid_pncrf'},
                        'svm': {'dist', 'dist_crf', 'prob', 'prob_crf', 'prob_pncrf'}}) as t:
-        results = t.train_test()
+        results = t.train_test_svm()
         with open(f + '.pickle', mode='wb') as h:
             pickle.dump(results, h)
     print '{} finished: '.format(f, time.ctime())

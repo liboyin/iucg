@@ -1,14 +1,15 @@
 import itertools
-import multiprocessing
 import numpy as np
+from joblib import Parallel, delayed
 from sklearn.svm import SVC
 
 kernels = ['linear', 'poly', 'rbf']
-pool = multiprocessing.Pool(8)
+# parallel = Parallel(n_jobs=12)
 
 
 def svm_fit(args):
     svm, (i, j), X, Y = args
+    # print 'i={}, j={}, X.shape={}, Y.shape={}'.format(i, j, X.shape, Y.shape)
     svm[i][j].fit(X, Y[:, j])
 
 
@@ -27,26 +28,20 @@ class SvmArray:
         self.D = D
         self.svm = [[SVC(kernel=k, probability=proba) for _ in range(0, D)] for k in kernels]  # K * D svm array
 
-    def fit(self, X, Y, parallel=False):
-        def args():
-            for c in coords:
-                yield self.svm, c, X, Y
+    def fit(self, X, Y):
         coords = itertools.product(range(0, len(kernels)), range(0, self.D))  # if iterating more than once, use list
-        f_map = pool.map if parallel else map
-        map(svm_fit, args())
+        # parallel(delayed(svm_fit)((self.svm, c, X, Y)) for c in coords)  # double parenthesis to make tuple
+        map(svm_fit, [(self.svm, c, X, Y) for c in coords])
 
-    def predict(self, X, out, kernel=None, parallel=False):
-        def args():
-            for c in coords:
-                yield self.svm, c, X
+    def predict(self, X, out, kernel=None):
         assert out == 'proba' or out == 'dist'
         if kernel:  # is not None
             coords = itertools.product([kernel], range(0, self.D))
         else:  # all kernels
             coords = itertools.product(range(0, len(kernels)), range(0, self.D))
-        f_map = pool.map if parallel else map
         f_predict = svm_predict_proba if out == 'proba' else svm_predict_dist
-        Y = f_map(f_predict, args())
+        # Y = parallel(delayed(f_predict)((self.svm, c, X)) for c in coords)
+        Y = map(f_predict, [(self.svm, c, X) for c in coords])
         if kernel:  # is not None
             return np.swapaxes(Y, 0, 1)  # D * N -> N * D
         else:  # all kernels

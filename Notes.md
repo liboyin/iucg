@@ -19,7 +19,7 @@
 * Compile with `cmake` to have consistent version of `libprotobuf`
 * Monitor GPU usage with `nvidia-smi`. Allow window duplication with `tmux`
 * To import caffe in Python, add `libcudart.so.6.5` and `libcblas.so.3gf` to path: `export LD_LIBRARY_PATH=/usr/local/cuda-6.5/targets/x86_64-linux/lib:/usr/lib/atlas-base`, then start python from `/data2/libo/caffe/python`
-* Package `h5py` and `Numpy` needs to be installed manually
+* Package `h5py`, `numpy`, and `scipy` needs to be installed manually with `python setup.py install --user`
 
 ##Multiclass Binary Classification
 
