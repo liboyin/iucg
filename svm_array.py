@@ -20,7 +20,7 @@ def svm_predict_dist(args):
 
 def svm_predict_proba(args):
     svm, (i, j), X = args
-    return svm[i][j].predict_proba(X)
+    return svm[i][j].predict_proba(X)[..., 1]  # (K * D) * N * 2 -> (K * D) * N
 
 
 class SvmArray:
@@ -45,7 +45,7 @@ class SvmArray:
         if kernel:  # is not None
             return np.swapaxes(Y, 0, 1)  # D * N -> N * D
         else:  # all kernels
-            return np.swapaxes(np.reshape(Y, (len(kernels), self.D, len(X))), 1, 2)  # (K * D * N) -> K * N * D
+            return np.swapaxes(np.reshape(Y, (len(kernels), self.D, len(X))), 1, 2)  # (K * D) * N -> K * D * N -> K * N * D
 
 
 # class TempGlobal:
