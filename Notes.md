@@ -1,3 +1,23 @@
+##For the Thesis
+
+There are two issues in Deng's paper. First, the potential function does not handle different depth problem. Second, the inference system has no learnable part.
+
+To fix the first problem, we redefine the potential function to consider not only the active nodes, but also the inactive ones. However, this fix contradicts with the realistic labelling assumption. Deng's paper assumes that a high proportion of images are actually labelled to their immediate parents, e.g. Husky are labelled as dog. As a result, the bottom layer classifiers (I did not use word "leaf layer" because the hierarchy graph is a DAG in general. In the case of PASCAL, it happens to be a forest.) have very low confidence, due to the lack of training data. As a result, stopping at the next-to-bottom layer almost always yields higher accuracy than predicting all down to the bottom layer.
+
+Of course, this problem can be fixed by limiting the state space to those with one active bottom-layer node. With this fix, the advantage of revised potential function is clear. However, like the previous fix, this fix removed one of the core advantages of the HEX model: the possibility to label to an intermediate node, when the classifier is not confident enough to classify to a bottom-layer node.
+
+On this issue, there is one more point to make. All of the ImageNet or PASCAL labels are on the bottom-layer. If the classifier is allowed to label an image to an intermediate layer, then the label space is enlarged. While this can be problematic during the validation and testing stage, it is still a desirable feature during the deploy stage.
+
+To sum up here, with little confidence on the bottom layer classifiers, the problem is to attempt to classify to the bottom layers. However, in case the classifier really cannot make a decision, it should be allowed to stop at an intermediate layer. In addition, the classifier should consider both active and inactive nodes.
+
+Use all images to train the CNN, and images labelled to leaf nodes to train the CRF. Computation of partition function is by brute force, thanks to the tiny state space of PASCAL. Binary weights in the learned model does not suffer from the depth problem, as weights are able to adjust themselves.
+
+Also in the thesis:
+
+Why not pHEX? Uniform Ising coefficient, still not a learnable system.
+
+Why not aHEX? If only bottom-layer nodes have attributes, then inference on attributes is trivial. However, if all nodes have attributes, learning will be intractable due to the number of loops.
+
 ##Caffe on Ubuntu Laptop
 
 * `Python.h` location: `/usr/include/python2.7`
@@ -38,13 +58,6 @@
 * Given that most images are relabelled to immediate parent, CRF should be more confident classifying to internal nodes. With a HEX graph with 1000 leaf nodes and 820 internal nodes, it may be the case that the authors only allowed legal states that label to leaf nodes. This hypothesis is supported by experiments on SVM. Also, in Deng et al page 10 section 4.1: "The layer takes as input a set of scores $f(x,w)\in\mathbb{R}^n$, and outputs marginal probability of a given set of labels".
 * Tried NO relabelling, i.e. label all training images to leaf node. Accuracy is 0.5107/0.5053 on Caffe scheme 4, and 0.7506/0.7518 on SVM scheme 4. (Note that this result is obtained on different train/test split.) The overall accuracy is higher in such case, but it looks like CRF delivers smaller improvement.
 
-##TODO
-* Need new accuracy metric: successfully labeled to all immediate parents.
-* Extension stage 1: Attributed pHEX (bottomline for thesis)
-* Extension stage 2: End-to-end training (bottomline for publication)
-* (from Stephen Gould) Try a newer caffe network, e.g. VGG, GoogLeNet.
-* (from Stephen Gould) For CNN, tierarchical loss for hierarchical classification. (Similar idea used in CRF.)
-
 ##Unary Terms with Caffe
 ###Experiments
 
@@ -59,14 +72,14 @@ id | setup
 5  | Independent prediction to probability + original CRF
 6  | Independent prediction to probability + positive-negative CRF
 
-id |   0%   |   50%  |   90%
--- | ------ | ------ | ------
-1  |   n/a  | 0.7197 | 0.6733
-2  | 0.7244 | 0.6828 | 0.4073
-3  | 0.7226 | 0.6852 | 0.4845
-4  | 0.7244 | 0.6828 | 0.4073
-5  | 0.7250 | 0.6799 | 0.4495
-6  | 0.7226 | 0.6852 | 0.4887
+id |   0%          |   50%         |   90%
+-- | ------------- | ------------- | -------------
+1  |   n/a         | 0.7260        | 0.6543
+2  | 0.7256        | 0.6775        | 0.2814/0.3289
+3  | 0.7209/0.6585 | 0.6823/0.3479 | 0.4026/0.0332
+4  | 0.7256        | 0.6775        | 0.2814/0.3289
+5  | 0.7238/0.0332 | 0.6757/0.0332 | 0.3699/0.0332
+6  | 0.7209/0.6585 | 0.6823/0.3479 | 0.4026/0.0332
 
 ###Legacy: Experiments for Optimal LR
 
@@ -107,13 +120,13 @@ id | setup
 4  | Probability + original CRF
 5  | Probability + positive-negative CRF
 
-id |   0%   |  50%   |  90%
--- | ------ | ------ | ------
-1  | 0.7648 | 0.7060 | 0.5320
-2  | 0.7612 | 0.7096 | 0.6454
-3  | 0.7666 | 0.6823 | 0.5338
-4  | 0.7624 | 0.7131 | 0.5973
-5  | 0.7636 | 0.7137 | 0.6324
+id |   0%     |  50%     |  90%
+-- | -------- | -------- | --------
+1  | 0.7523   | 0.6989   | 0.4946
+2  | 0.7416/0 | 0.7096/0 | 0.5861/0
+3  | 0.7595   | 0.6882   | 0.4732
+4  | 0.5896/0 | 0.3052/0 | 0.2244/0
+5  | 0.7363   | 0.6906   | 0.4815
 
 ###An Explanation on `tanh` Transformation
 
