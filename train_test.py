@@ -34,7 +34,8 @@ class TrainTestTask:
         self.X_val, self.Y_val = read_hdf5(join(data_dir, 'val.h5'))
         self.X_test, self.Y_test = read_hdf5(join(data_dir, 'test.h5'))
         # load state space
-        self.state_space = filter(lambda x: x[:20].any(), hex_data['state_space'])  # limit state space to leaf node
+        self.state_space = hex_data['state_space']  # use full state space
+        #self.state_space = filter(lambda x: x[:20].any(), hex_data['state_space'])  # limit state space to leaf node
         self.mean_pixel = np.load(join(data_dir, 'ilsvrc12_mean.npy')).mean(axis=(1, 2))
 
     def __enter__(self):  # renames back in __exit__
