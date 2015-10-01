@@ -41,7 +41,7 @@ def get_accuracy(Y_predict, Y_truth):
     :param Y_truth: N ground truth labels.
     """
     if Y_predict.dtype == bool:
-        return float(np.count_nonzero(Y_predict[np.arange(len(Y_predict)), Y_truth])) / len(Y_predict)  # advanced indexing
+        return float(np.count_nonzero(Y_predict[np.arange(len(Y_predict)), Y_truth])) / len(Y_predict)
     return float(np.count_nonzero(Y_predict[:, :20].argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
@@ -60,25 +60,22 @@ def confusion_matrix(Y_predict, Y_truth):
     return cm / cm.sum(axis=0)[:, None], accuracy  # transpose vector to 2d array
 
 
-def to_crf(Y, state_space, log, pos_neg):
+def to_crf(Y, state_space, scheme):
     """
     :param Y: N * D numerical array of prediction.
     :param state_space: list of legal binary states.
-    :param log: whether to calculate in the logarithm space
-    :param pos_neg: whether inactive nodes are considered in the model.
+    :param scheme: which CRF to use. Learnable CRF not included.
     :return: N * D boolean array of prediction. Each prediction is from @self.state_space.
     """
-    def crf_step(y):
+    assert scheme == 'raw' or scheme == 'log' or scheme == 'pos_neg'
+    def raw_step(y):
         scores = map(lambda s: y[s].sum(), state_space)
         return state_space[np.argmax(scores)]
-    def log_crf_step(y):
+    def log_step(y):  # requires predictions to be greater than 0
         scores = map(lambda s: np.log(y[s]).sum(), state_space)
         return state_space[np.argmax(scores)]
-    def pn_crf_step(y):  # requires predictions to be P(y_i=1)
+    def pn_step(y):  # requires predictions to be P(y_i=1)
         scores = map(lambda s: np.log(y[s]).sum() + np.log(1 - y[np.logical_not(s)]).sum(), state_space)
         return state_space[np.argmax(scores)]
-    if pos_neg:
-        return np.array(map(pn_crf_step, Y), dtype=bool)
-    if log:
-        return np.array(map(log_crf_step, Y), dtype=bool)
-    return np.array(map(crf_step, Y), dtype=bool)
+    step_func = {'raw': raw_step, 'log': log_step, 'pos_neg': pn_step}
+    return np.array(map(step_func[scheme], Y), dtype=bool)
