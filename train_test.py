@@ -67,29 +67,39 @@ class TrainTestTask:
             'caffe.sigmoid_crf': val_test(lambda Y: to_crf(sigmoid(Y), self.state_space, scheme='log')),
             'caffe.sigmoid_pncrf': val_test(lambda Y: to_crf(sigmoid(Y), self.state_space, scheme='pos_neg'))
         }
-        # TODO: add learnable crf
+        # learnable crf
         X_train, Y_train, Y_train_hierarchy = read_hdf5(join(data_dir, 'train.h5'), hierarchy=True)
-        leaf_indices = np.nonzero(Y_train_hierarchy[np.arange(len(X_train)), Y_train])[0]
+        leaf_indices = np.nonzero(Y_train_hierarchy[np.arange(len(Y_train)), Y_train])[0]
+        X_train_leaf = X_train[leaf_indices]
         Y_train_leaf = Y_train[leaf_indices]
-        iter_Phi_leaf = np.array([caffe.Classifier(model_file=my_deploy, pretrained_file=x, mean=self.mean_pixel,
-                                                   channel_swap=(0, 1, 2), raw_scale=1, image_dims=(227, 227))
-                                  .predict(X_train[leaf_indices], oversample=False) for x in caffemodels], dtype=float)
-        lcrf = [LearnableCrf(x, Y_train_leaf) for x in iter_Phi_leaf]
+        iter_Phi_leaf = [caffe.Classifier(model_file=my_deploy, pretrained_file=x, mean=self.mean_pixel,
+                                          channel_swap=(0, 1, 2), raw_scale=1, image_dims=(227, 227))
+                         .predict(X_train_leaf, oversample=False) for x in caffemodels]
+        lcrf = [LearnableCrf(sigmoid(x), Y_train_leaf) for x in iter_Phi_leaf]
+        opt_iter = np.argmax([get_accuracy(x[0].predict(x[1]), self.Y_val) for x in zip(lcrf, iter_Y_val)])
+        if opt_iter in iter_Y_predict:
+            Phi_predict = iter_Y_predict[opt_iter]
+        else:
+            Phi_predict = caffe.Classifier(model_file=my_deploy, pretrained_file=caffemodels[opt_iter],
+                                           mean=self.mean_pixel, channel_swap=(0, 1, 2), raw_scale=1,
+                                           image_dims=(227, 227)).predict(self.X_test, oversample=False)
+        cm, accuracy = confusion_matrix(lcrf[opt_iter].predict(sigmoid(Phi_predict)), self.Y_test)
+        results['caffe.learn_crf'] = opt_iter, accuracy, cm
         return results
 
 
     def train_test_svm(self):
         def val_test(func_Y, out):
             opt_kernel = np.argmax([get_accuracy(Y, self.Y_val) for Y in map(func_Y, kernel_Y_val)])
-            if opt_kernel in kernel_predict:  # cache @Y_predict
-                Y_predict = kernel_predict[opt_kernel]
+            if opt_kernel in kernel_Y_predict:  # cache @Y_predict
+                Y_predict = kernel_Y_predict[opt_kernel]
             else:
                 Y_predict = svm.predict(Phi_test, out, kernel=opt_kernel)
-                kernel_predict[opt_kernel] = Y_predict
+                kernel_Y_predict[opt_kernel] = Y_predict
             cm, accuracy = confusion_matrix(func_Y(Y_predict), self.Y_test)
             return opt_kernel, accuracy, cm
         # get caffe output on train, val, test
-        X_train, _, Y_train = read_hdf5(join(data_dir, 'train.h5'), hierarchy=True)
+        X_train, Y_train, Y_train_hierarchy = read_hdf5(join(data_dir, 'train.h5'), hierarchy=True)
         net = caffe.Classifier(model_file=join(data_dir, 'ilsvrc12_deploy.prototxt'),
                                pretrained_file=join(data_dir, 'ilsvrc12_trained.caffemodel'),
                                mean=self.mean_pixel, channel_swap=(0, 1, 2), raw_scale=1, image_dims=(227, 227))
@@ -97,21 +107,33 @@ class TrainTestTask:
         Phi_val = net.predict(self.X_val, oversample=False)
         Phi_test = net.predict(self.X_test, oversample=False)
         # train svm array
-        svm = SvmArray(Y_train.shape[1], proba=True)
-        svm.fit(Phi_train, Y_train)
+        svm = SvmArray(Y_train_hierarchy.shape[1], proba=True)
+        svm.fit(Phi_train, Y_train_hierarchy)
         # get results on val. For each test scheme: choose optimal kernel, calculate accuracy and confusion matrix
         kernel_Y_val = svm.predict(Phi_val, out='dist')
-        kernel_predict = dict()
+        kernel_Y_predict = dict()
         results = {
             'svm.dist': val_test(lambda Y: Y, out='dist'),
             'svm.dist_crf': val_test(lambda Y: to_crf(Y, self.state_space, scheme='raw'), out='dist')
         }
+        # probabilistic SVM
         kernel_Y_val = svm.predict(Phi_val, out='proba')
-        kernel_predict = dict()
+        kernel_Y_predict = dict()
         results['svm.prob'] = val_test(sigmoid, out='proba')
         results['svm.prob_crf'] = val_test(lambda Y: to_crf(sigmoid(Y), self.state_space, scheme='log'), out='proba')
         results['svm.prob_pncrf'] = val_test(lambda Y: to_crf(sigmoid(Y), self.state_space, scheme='pos_neg'), out='proba')
-        # TODO: add learnable crf
+        # learnable crf
+        leaf_indices = np.nonzero(Y_train_hierarchy[np.arange(len(Y_train)), Y_train])[0]
+        kernel_Phi2_leaf = svm.predict(Phi_train[leaf_indices], out='proba')
+        Y_train_leaf = Y_train[leaf_indices]
+        lcrf = [LearnableCrf(x, Y_train_leaf) for x in kernel_Phi2_leaf]
+        opt_kernel = np.argmax([get_accuracy(x[0].predict(x[1]), self.Y_val) for x in zip(lcrf, kernel_Y_val)])
+        if opt_kernel in kernel_Y_predict:
+            Phi_predict = kernel_Y_predict[opt_kernel]
+        else:
+            Phi_predict = svm.predict(Phi_test, out='proba', kernel=opt_kernel)
+        cm, accuracy = confusion_matrix(lcrf[opt_kernel].predict(Phi_predict), self.Y_test)
+        results['svm.learn_crf'] = opt_kernel, accuracy, cm
         return results
 
     def __exit__(self, type, value, traceback):
