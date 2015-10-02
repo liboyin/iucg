@@ -37,14 +37,14 @@ class LearnableCrf:
         T = np.tile(theta[None, None, D:], (self.N, S, 1))  # N * S * E
         P_tilde = np.exp((W * unary).sum(axis=2) + (T * pairwise).sum(axis=2))  # N * S
         Z = P_tilde.sum(axis=1)  # R ^ N
-        P_norm = P_tilde / np.tile(Z[:, None], (1, S))
+        P_norm = P_tilde / np.tile(Z[:, None], (1, S))  # TODO: division error
         self.theta_old = theta
         self.unary = unary
         self.pairwise = pairwise
         self.P_norm = P_norm
 
     def objective(self, theta):
-        if (self.theta_old != theta).any():
+        if not np.allclose(theta, self.theta_old):
             self.update(theta)
         return (-C/self.N) * np.log(self.P_norm[np.arange(self.N), self.Y]).sum() + np.dot(theta, theta) / 2
 
@@ -55,7 +55,7 @@ class LearnableCrf:
             t_from_data = (self.pairwise * state_mask)[np.arange(self.N), self.Y, :].sum()
             t_from_Z = (np.tile(self.P_norm[:, :, None], (1, 1, E)) * self.pairwise * state_mask).sum()
             return t_from_data - t_from_Z
-        if (self.theta_old != theta).any():
+        if not np.allclose(theta, self.theta_old):
             self.update(theta)
         w_from_data = self.unary[np.arange(self.N), self.Y, :]
         w_from_Z = (np.tile(self.P_norm[:, :, None], (1, 1, D)) * self.unary).sum(axis=1)
