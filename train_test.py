@@ -47,8 +47,7 @@ class TrainTestTask:
                                                   mean=self.mean_pixel, channel_swap=(0, 1, 2), raw_scale=1,
                                                   image_dims=(227, 227)).predict(self.X_test, oversample=False)
                 iter_Y_test_predict[opt_iter] = Y_test_predict
-            cm, accuracy = confusion_matrix(func_Y(Y_test_predict), self.Y_test)
-            return opt_iter, accuracy, cm
+            return opt_iter, get_accuracy(func_Y(Y_test_predict), self.Y_test)
         # train caffe
         train_cmd = './../build/tools/caffe train --solver=my_solver.prototxt --weights=ilsvrc12_trained.caffemodel'
         subprocess.Popen(train_cmd, shell=True, cwd=data_dir).wait()
@@ -83,10 +82,8 @@ class TrainTestTask:
             Phi_test = caffe.Classifier(model_file=my_deploy, pretrained_file=caffemodels[opt_iter],
                                         mean=self.mean_pixel, channel_swap=(0, 1, 2), raw_scale=1,
                                         image_dims=(227, 227)).predict(self.X_test, oversample=False)
-        cm, accuracy = confusion_matrix(lcrf[opt_iter].predict(sigmoid(Phi_test)), self.Y_test)
-        results['caffe.learn_crf'] = opt_iter, accuracy, cm
+        results['caffe.learn_crf'] = opt_iter, get_accuracy(lcrf[opt_iter].predict(sigmoid(Phi_test)), self.Y_test)
         return results
-
 
     def train_test_svm(self):
         def val_test(func_Y, out):
@@ -96,8 +93,7 @@ class TrainTestTask:
             else:
                 Y_test_predict = svm.predict(Phi_test, out, kernel=opt_kernel)
                 kernel_Y_test_predict[opt_kernel] = Y_test_predict
-            cm, accuracy = confusion_matrix(func_Y(Y_test_predict), self.Y_test)
-            return opt_kernel, accuracy, cm
+            return opt_kernel, get_accuracy(func_Y(Y_test_predict), self.Y_test)
         # get caffe output on train, val, test
         X_train, Y_train, Y_train_hierarchy = read_hdf5(join(data_dir, 'train.h5'), hierarchy=True)
         net = caffe.Classifier(model_file=join(data_dir, 'ilsvrc12_deploy.prototxt'),
@@ -132,8 +128,7 @@ class TrainTestTask:
             Phi_predict = kernel_Y_test_predict[opt_kernel]
         else:
             Phi_predict = svm.predict(Phi_test, out='proba', kernel=opt_kernel)
-        cm, accuracy = confusion_matrix(lcrf[opt_kernel].predict(Phi_predict), self.Y_test)
-        results['svm.learn_crf'] = opt_kernel, accuracy, cm
+        results['svm.learn_crf'] = opt_kernel, get_accuracy(lcrf[opt_kernel].predict(Phi_predict), self.Y_test)
         return results
 
     def __exit__(self, type, value, traceback):

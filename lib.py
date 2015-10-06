@@ -42,22 +42,7 @@ def get_accuracy(Y_predict, Y_truth):
     """
     if Y_predict.dtype == bool:
         return float(np.count_nonzero(Y_predict[np.arange(len(Y_predict)), Y_truth])) / len(Y_predict)
-    return float(np.count_nonzero(Y_predict[:, :20].argmax(axis=1) == Y_truth)) / len(Y_predict)
-
-
-def confusion_matrix(Y_predict, Y_truth):
-    """
-    Accuracy is also provided in @get_accuracy. However, that accuracy-only implementation is faster.
-    :param Y_predict: N * D array of prediction. Data type may be either numerical or boolean.
-    :param Y_truth: N ground truth labels. Must contain at least one instance for each class.
-    :return: cm: D * D confusion matrix.
-    :return: accuracy: leaf accuracy.
-    """
-    cm = np.zeros((20, 20), dtype=float)
-    for i, y in enumerate(Y_predict):
-        cm[Y_truth[i], y[:20].argmax()] += 1  # works for both bool and numerical y
-    accuracy = cm.trace() / len(Y_predict)
-    return cm / cm.sum(axis=0)[:, None], accuracy  # transpose vector to 2d array
+    return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
 def to_crf(Y, state_space, scheme):

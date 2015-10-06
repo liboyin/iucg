@@ -1,43 +1,47 @@
 import numpy as np
 import pickle
-from scipy.optimize import fmin_bfgs
+from scipy.optimize import fmin_l_bfgs_b, fmin_tnc
 
 with open('hex.pickle', mode='rb') as h:
     hex_data = pickle.load(h)
 H_e = hex_data['H_e']
 state_edges = hex_data['state_edges']
 state_space = hex_data['state_space']
-# state_space = np.array(filter(lambda x: x[:20].any(), state_space))
 S = len(state_space)  # S: state space size
-D = 27  # D: number of nodes
+V = 27  # V: number of nodes
 E = 24  # E: number of edges
-C = 100.0  # must be float
+C = 1000.0  # must be float
 
 
 class LearnableCrf:
     def __init__(self, Phi, Y):
+        assert Phi.min() >= 0 and Phi.max() <= 1
+        assert len(Phi) == len(Y)
         self.Phi = Phi
         self.N = len(Phi)
         self.Y = Y
-        self.theta_old = np.zeros(D + E, dtype=float)
-        self.opt_theta = fmin_bfgs(self.objective, np.ones(D + E, dtype=float), self.obj_prime)
+        self.theta_old = np.zeros(V + E, dtype=float)
+        self.opt_theta = fmin_l_bfgs_b(func=self.objective, x0=np.ones(V + E, dtype=float), fprime=self.obj_prime,
+                                       bounds=[(0.5, None)] * (V + E), iprint=0)[0]
+        # self.opt_theta = fmin_tnc(func=self.objective, x0=np.ones(V + E, dtype=float), fprime=self.obj_prime,
+        #                           bounds=[(0.5, None)] * (V + E)).x
 
     def update(self, theta):
         def pairwise_step(phi):
             pw = np.zeros((S, E), dtype=float)
             for i in range(0, S):
-                for j in state_edges[i]:
-                    pw[i, j] = phi[H_e[j]].prod()
+                for e in state_edges[i]:
+                    pw[i, e] = phi[H_e[e]].prod()
             return pw
-        X = np.tile(self.Phi[:, None, :], (1, S, 1))  # N * S * D
-        Y_hat = np.tile(state_space, (self.N, 1, 1))
-        unary = X * Y_hat + (1 - X) * np.logical_not(Y_hat)  # N * S * D
-        pairwise = np.array(map(pairwise_step, self.Phi), dtype=float)  # N * S * E
-        W = np.tile(theta[None, None, :D], (self.N, S, 1))  # N * S * D
-        T = np.tile(theta[None, None, D:], (self.N, S, 1))  # N * S * E
+        X = np.tile(self.Phi[:, None, :], (1, S, 1))  # N * V -> N * S * V
+        Y_hat = np.tile(state_space, (self.N, 1, 1))  # V * S -> N * S * V
+        unary = (X * Y_hat + (1 - X) * np.logical_not(Y_hat)) / V  # N * S * V
+        pairwise = np.array(map(pairwise_step, self.Phi), dtype=float) / E  # N * S * E
+        W = np.tile(theta[None, None, :V], (self.N, S, 1))  # (V + E) -> N * S * V
+        T = np.tile(theta[None, None, V:], (self.N, S, 1))  # (V + E) -> N * S * E
         P_tilde = np.exp((W * unary).sum(axis=2) + (T * pairwise).sum(axis=2))  # N * S
         Z = P_tilde.sum(axis=1)  # R ^ N
-        P_norm = P_tilde / np.tile(Z[:, None], (1, S))  # TODO: division error
+        P_norm = P_tilde / Z[:, None]  # TODO: division error
         self.theta_old = theta
         self.unary = unary
         self.pairwise = pairwise
@@ -46,22 +50,18 @@ class LearnableCrf:
     def objective(self, theta):
         if not np.allclose(theta, self.theta_old):
             self.update(theta)
-        return (-C/self.N) * np.log(self.P_norm[np.arange(self.N), self.Y]).sum() + np.dot(theta, theta) / 2
+        return (-C/self.N) * np.log(self.P_norm[np.arange(self.N), self.Y]).sum() + np.dot(theta-1, theta-1) / 2
 
     def obj_prime(self, theta):
-        def nabla_t_step(e):
-            state_mask = np.zeros((self.N, S, E), dtype=bool)
-            state_mask[:, filter(lambda i: e in state_edges[i], range(0, S)), :] = 1
-            t_from_data = (self.pairwise * state_mask)[np.arange(self.N), self.Y, :].sum()
-            t_from_Z = (np.tile(self.P_norm[:, :, None], (1, 1, E)) * self.pairwise * state_mask).sum()
-            return t_from_data - t_from_Z
         if not np.allclose(theta, self.theta_old):
             self.update(theta)
-        w_from_data = self.unary[np.arange(self.N), self.Y, :]
-        w_from_Z = (np.tile(self.P_norm[:, :, None], (1, 1, D)) * self.unary).sum(axis=1)
-        nabla_w = (w_from_data - w_from_Z).sum(axis=0)
-        nabla_t = np.array(map(nabla_t_step, range(0, E)), dtype=float)
-        return (-C/self.N) * np.concatenate((nabla_w, nabla_t)) + theta
+        nabla_w_data = self.unary[np.arange(self.N), self.Y, :]
+        nabla_w_Z = (self.P_norm[:, :, None] * self.unary).sum(axis=1)
+        nabla_w = (nabla_w_data - nabla_w_Z).sum(axis=0)
+        nabla_t_data = self.pairwise[np.arange(self.N), self.Y, :]
+        nabla_t_Z = (self.P_norm[:, :, None] * self.pairwise).sum(axis=1)
+        nabla_t = (nabla_t_data - nabla_t_Z).sum(axis=0)
+        return (-C/self.N) * np.concatenate((nabla_w, nabla_t)) + theta - 1
 
     def predict(self, Phi):
         self.Phi = Phi
