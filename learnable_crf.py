@@ -2,11 +2,12 @@ import numpy as np
 import pickle
 from scipy.optimize import fmin_l_bfgs_b, fmin_tnc
 
-with open('hex.pickle', mode='rb') as h:
+with open('cache/hex.pickle', mode='rb') as h:
     hex_data = pickle.load(h)
 H_e = hex_data['H_e']
 state_edges = hex_data['state_edges']
 state_space = hex_data['state_space']
+state_space = filter(lambda x: x[:20].any(), state_space)  # limit state space to leaf node
 S = len(state_space)  # S: state space size
 V = 27  # V: number of nodes
 E = 24  # E: number of edges

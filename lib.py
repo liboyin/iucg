@@ -32,7 +32,7 @@ def get_iter_caffemodel(data_dir):
     return iters, [join(data_dir, 'temp', x) for x in models]
 
 
-def get_accuracy(Y_predict, Y_truth):
+def get_accuracy(Y_predict, Y_truth, lim_states=False):
     """
     Calculates the leaf accuracy of a prediction. Note that for boolean y from CRF, leaf nodes compete in state
         space; for numerical y, leaf nodes compete explicitly.
@@ -40,8 +40,10 @@ def get_accuracy(Y_predict, Y_truth):
     :param Y_predict: N * D array of prediction. Data type may be either numerical or boolean.
     :param Y_truth: N ground truth labels.
     """
-    if Y_predict.dtype == bool:
+    if Y_predict.dtype == bool:  # to limit the states for crf, filter states directly
         return float(np.count_nonzero(Y_predict[np.arange(len(Y_predict)), Y_truth])) / len(Y_predict)
+    if lim_states:
+        return float(np.count_nonzero(Y_predict[:, :20].argmax(axis=1) == Y_truth)) / len(Y_predict)
     return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
