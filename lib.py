@@ -39,8 +39,9 @@ def get_accuracy(Y_predict, Y_truth, lim_states=False):
     Accuracy is also provided in @confusion_matrix. However, this accuracy-only implementation is faster.
     :param Y_predict: N * D array of prediction. Data type may be either numerical or boolean.
     :param Y_truth: N ground truth labels.
+    :param lim_states: for numerical prediction, whether to limit the state space to bottom-level nodes
     """
-    if Y_predict.dtype == bool:  # to limit the states for crf, filter states directly
+    if Y_predict.dtype == bool:  # to limit states for crf, filter the state space directly
         return float(np.count_nonzero(Y_predict[np.arange(len(Y_predict)), Y_truth])) / len(Y_predict)
     if lim_states:
         return float(np.count_nonzero(Y_predict[:, :20].argmax(axis=1) == Y_truth)) / len(Y_predict)
