@@ -1,4 +1,10 @@
 .DS_Store
 .ipynb_checkpoints
 .idea
-*.pyc
+.pyc
+.aux
+.dvi
+.log
+.out
+.synctex
+
