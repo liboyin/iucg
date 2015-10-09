@@ -6,6 +6,6 @@
 */*.dvi
 */*.log
 */*.out
-*/*.synctex
+*/*.synctex.gz
 */*.bbl
 */*.blg

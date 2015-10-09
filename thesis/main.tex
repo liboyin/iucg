@@ -1,8 +1,4 @@
-% ILSVRC is exclusive, pascal is independent. this project attacks ilsvrc task 1 using pascal dataset.
-% Dataset not augmented (e.g. rotation, blurring) since HEX paper didn't.
-% hierarchy is form WordNet, exclusion is greedy
-% realistic labelling assumption
-% The authors of \cite{deng2014large} did not address this problem. In this work, accuracy is tested both in the extended concept space and the original one, by limiting the state space to those with an active bottom-level node.
+% The inference in original paper is LBP, where clique states are limited by the local state space.
 
 \documentclass[11pt,a4paper]{article}
 \usepackage{amsmath}
@@ -19,66 +15,61 @@
 \author{Libo Yin\\The Australian National University}
 \maketitle
 \section{The Original HEX Model}
+\subsection{Structure}
 
-The original HEX model \cite{deng2014large} is an extension of the baseline flat multiclass classification model. There are two types of multiclass classification: exclusive, where the classifier predicts exactly one out of all possible states to be true; and independent, where each state is assigned true or false independently. HEX finds a balance between these two ends of the spectrum. It models the hierarchical and exclusive relationship between concepts, along with their hypernyms, with a semantic graph. Each node in this graph corresponds to a concept in the extended concept space being true or false. Due to the semantic constraints on the state of neighbouring nodes, the state space of HEX is much smaller than independent multiclass classification. HEX model classifies an image into a semantically consistent hierarchy. A simple HEX graph is shown in \hyperref[fig:naive]{figure~\ref{fig:naive}}.
+The original HEX model \cite{deng2014large} is an extension of the baseline flat multiclass classification model. There are two types of multiclass classification: exclusive, where the classifier predicts exactly one out of all possible states to be true; and independent, where each state is assigned true or false independently. HEX finds a balance between these two ends of the spectrum. It models the hierarchical and exclusive relationship between concepts, along with their hypernyms, with a semantic graphical model. Each node in this graphical model corresponds to a concept in the extended concept space being true or false. States of neighbouring nodes are constrained in that if $a$ is a hypernym of $b$, then it is not possible that $a=0,\ b=1$; if $a$ and $b$ are exclusive, then they cannot both be true. HEX model classifies an image into a hierarchy that satisfy the above semantic consistency. A simple HEX graph is shown in \hyperref[fig:naive]{figure~\ref{fig:naive}}.
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.5]{naive.jpeg}
-\caption{A simple HEX graph with three nodes in the original concept space (denoted by rectangles) and their hypernyms. Directed edges denote semantical hierarchy: $(a\rightarrow b)$ if $a$ is a hypernym of $b$; and undirected edges denote exclusion: $(a-b)$ if $a$ and $b$ cannot be true at the same time. Note that the hierarchical graph is in general a DAG rather than a tree.}
+\caption{A simple HEX graph with three nodes in the original concept space (denoted by rectangles) and their hypernyms (denoted by ellipsoids). Directed edges denote semantical hierarchy: $(a\rightarrow b)$ if $a$ is a hypernym of $b$ according to WordNet; and undirected edges denote exclusion: $(a-b)$ if $a$ and $b$ cannot be true at the same time. Since exclusive relationship is not covered by WordNet, the exclusive subgraph is initialized greedily: two concepts are exclusive unless they share a common descendant in the hierarchical subgraph. Note that the hierarchical subgraph is in general a DAG rather than a tree. Value beside each node is the confidence on that particular node.}
 \label{fig:naive}
 \end{figure}
 
 Denoting the set of vertices by $V$, the set of hierarchical edges by $E_e$, and the set of exclusive edges by $E_h$, the joint assignment $y\in\{0,1\}^V$ can be defined as a CRF:
-\[\tilde{p}(y|x)=\prod_{i\in V}\exp\{f_i(x;w)[y_i=1]\}\prod_{(v_i,v_j)\in E_h}[(y_i,y_j)\neq(0,1)]\prod_{(v_i,v_j)\in E_e}[(y_i,y_j)\neq(1,1)]\]
+\[\tilde{p}(y|x)=\prod_{i\in V}\exp\{f_i(x;w)I[y_i=1]\}I[y\text{ legal}]\]
 
-where $f_i(x;w)$ is a convolutional neural network. For notational convenience, we define:
-\[I[y\text{ legal}]=\prod_{(v_i,v_j)\in E_h}[(y_i,y_j)\neq(0,1)]\prod_{(v_i,v_j)\in E_e}[(y_i,y_j)\neq(1,1)]\]
+where unary input $f_i(x;w)$ is the prediction of an arbitrary classifier\footnote{According to \cite{deng2014large}. It shall be explained later that the choice of underlying classifier is actually not arbitrary.} on concept $i$, and
+\[I[y\text{ legal}]=\prod_{(v_i,v_j)\in E_h}I[(y_i,y_j)\neq(0,1)]\prod_{(v_i,v_j)\in E_e}I[(y_i,y_j)\neq(1,1)]\]
 
-There are a few important observations about this potential function, listed below from most obvious to most surprising:
-\begin{enumerate}
-\item There are no learnable variables in this CRF.
-\item Mathematically, CRF requires $\forall y:\tilde{p}(y|x)>0$. However, computationally, assigning zero to $\tilde{p}(y|x)$ can be interpreted as assigning an infinitesimal value. Therefore, the above definition is computationally equivalent to a legitimate CRF.
-\item A valid state does not have to have an active node in the original concept space. For example, valid states of the HEX graph shown in \hyperref[fig:naive]{figure~\ref{fig:naive}} are:
-\begin{enumerate}
-\item $\varnothing$
-\item \{animal\}
-\item \{animal, pet\}
-\item \{animal, person\}
-\item \{animal, pet, cat\}
-\item \{animal, pet, dog\}
-\end{enumerate}
-
-This allows an image to be classified to abstract concepts (even $\varnothing$) when the classifier is not confident to classify to anything in the original concept space. This is by no doubt a desirable feature for deployment. However, since all testing images are labelled in the original concept space, classifying to the extended concept space makes performance evaluation troublesome.
-\item In \hyperref[fig:naive]{figure~\ref{fig:naive}}, the competition between state \{animal, pet, cat\} and \{animal, pet, dog\} depends entirely on the confidence of bottom-level node\footnote{Since hierarchical graph is not necessary a tree, ``leaf nodes'' is not an appropriate term here.} dog and cat. However, to discriminate between \{animal, pet, dog\} and \{animal, person\} requires examining the confidence along the path. From this process it can be seen that classifier confidence being passed down the hierarchy from abstract concept to concrete ones. On the other side of the same coin, during the CNN training stage, branching nodes receive more training data, and therefore gain more confidence. This can be seen as confidence being passed up in the hierarchy.
-\item Consider the situation in \hyperref[fig:depth]{figure~\ref{fig:depth}}:
-\begin{figure}[h]
+formalises local semantic constraints on hierarchical and exclusive edges. Thanks to these constraints, the state space of a HEX graph is much smaller than independent multiclass classification on the same concept space. For example, the valid states of the HEX graph in \hyperref[fig:naive]{figure~\ref{fig:naive}} and their respective potentials are listed in \hyperref[tab:naive]{table~\ref{tab:naive}}:
+\begin{table}[h]
 \centering
-\includegraphics[scale=0.5]{depth.jpeg}
-\caption{Numbers are confidence.}
-\label{fig:depth}
-\end{figure}
+\begin{tabular}{r|l}
+state & potential\\
+\hline
+$\varnothing$ & $\exp(0)$\\
+\{animal\} & $\exp(0.9)$\\
+\{animal, pet\} & $\exp(0.9+0.8)$\\
+\{animal, person\} & $\exp(0.9-0.1)$\\
+\{animal, pet, cat\} & $\exp(0.9+0.8+0.2)$\\
+\{animal, pet, dog\} & $\exp(0.9+0.8+0.4)$
+\end{tabular}
+\caption{Valid states of the HEX graph in \hyperref[fig:naive]{figure~\ref{fig:naive}} and their respective potentials.}
+\label{tab:naive}
+\end{table}
 
-The classifier will classify to \{animal, pet, dog\}, not because the confidence is higher, but because there are more nodes along the path.
+\subsection{Observations}
 
-\item the greedy nature of potential function guarantees a bottom-level node to be activated
+Note that a valid state does not have to have an active node in the original concept space. This allows an image to be classified to abstract concepts when the classifier is not confident to classify to anything more concrete. This is by no doubt a desirable feature for deployment. However, since all testing images are labelled in the original concept space, classifying to the extended concept space makes performance evaluation troublesome. In this work, accuracy is tested both in the extended concept space and the original one, by limiting legitimate states to those with an active concept in the original concept space.
+
+It is also noticed that in \hyperref[tab:naive]{table~\ref{tab:naive}}, the competition between state \{animal, pet, cat\} and \{animal, pet, dog\} depends entirely on the confidence of node ``dog'' and ``cat''. However, to discriminate between \{animal, pet, dog\} and \{animal, person\} requires examining the confidence along the path. From this process it is clear that, in the testing stage, confidence is passed down the hierarchy from abstract concepts to concrete ones. The other side of the same coin is that, during the training stage of the underlying classifier, branching nodes receive more training data, and therefore gain more confidence. This can be seen as confidence being passed up in the hierarchical subgraph.
+
+Listed below are two less important observations:
+\begin{enumerate}
+\item There are no learnable variables in this CRF. In other words, all learning is performed in the underlying classifier.
+\item Mathematically, CRF requires $\forall y:\tilde{p}(y|x)>0$. However, computationally, assigning zero to $\tilde{p}(y|x)$ can be interpreted as assigning an infinitesimal value. Therefore, the above definition is computationally equivalent to a legitimate CRF.
 \end{enumerate}
 
-In general, the HEX model can be seen as a noise filter that suppresses inconsistent results, and encourage consistent ones. The inference is by loopy belief propagation. This model turns out to be particularly beneficial for realistically labelled dataset, where mechanical turk tend to label an image to a more general term (e.g.\ ``Labrador'' as ``dog''). The basic steps are repeated as follows:
+\subsection{Problems}
 
-Let the set of ImageNet labels be $\mathcal{L}$. With WordNet, collect the hypernyms, transitively, of each concept in $\mathcal{L}$. 
+Consider the situation in \hyperref[tab:naive]{table~\ref{tab:naive}} again: the underlying classifier is rather confident that this image is an animal and a pet, slightly sure that it's a cat or a dog, and highly sure that it's not a person. In such case, the intuitive decision is to classify it to \{animal, pet\}, but not \{animal, pet, dog\}. The classifier chooses \{animal, pet, dog\} not because the confidence is higher, but because there are more nodes along the path. This reveals the first problem of the original HEX model: depth is not normalised, and the greedy potential function only considers active nodes, not inactive ones.
 
-It creates a semantic graphical model with classes as leaf nodes and hypernymes as branching nodes. The potential function is defined as follows:
-\[\tilde{p}(y|x)=\prod_{i\in V}\exp\{f_i(x;w)[y_i=1]\}\prod_{(v_i,v_j)\in E_h}[(y_i,y_j)\neq(0,1)]\prod_{(v_i,v_j)\in E_e}[(y_i,y_j)\neq(1,1)]\]
+The second problem is a combined consequence of the greedy exclusion setup and the first one. It is stated in \cite{deng2014large} that the underlying classifier is arbitrary. This requires the range of the output of the underlying classifier to be both positive and negative. Otherwise, for example, a probabilistic classifier is used, then it is guaranteed that a bottom-level node is activated. This means the effective state space is reduced to the size of the original concept space. In such case, inference can be performed by brute force even for ImageNet, which has 1000 labels. Also, the classifier cannot predict to an abstract concept any more. This defeats the purpose of HEX.
 
-For notational convenience, we define:
-\[I[y\text{ legal}]=\prod_{(v_i,v_j)\in E_h}[(y_i,y_j)\neq(0,1)]\prod_{(v_i,v_j)\in E_e}[(y_i,y_j)\neq(1,1)]\]
+\section{Improvements}
 
 To solve the hierarchy depth problem, we define:
 \[\tilde{p}(y|x)=[y\text{ legal}]\prod_i\exp\{f_i(x;w)[y_i=1]+(1-f_i(x;w))[y_i=0]\}\]
-
-We can see from the potential function that both hierarchical and exclusion edges help to reduce the label space, yet information only flows on hierarchy edges. The inference in original paper is LBP, where clique states are limited by the state space. On PASCAL, the inference is by brute force, due to the tiny state space.
-
-\section{Improvements}
 
 There are two issues in Deng's paper. First, the potential function does not handle different depth problem, and is greedy in labelling to bottom-layer nodes. As shall be discussed later, this has similar effects to reducing the state space, and is not a desired thing. Second, the inference system has no learnable part.
 
@@ -95,6 +86,10 @@ Use all images to train the CNN, and images labelled to leaf nodes to train the 
 \section{Dataset}
 
 Not augmented by rotation or flip since the original paper didn't
+
+% ILSVRC is exclusive, pascal is independent. this project attacks ilsvrc task 1 using pascal dataset.
+% Dataset not augmented (e.g. rotation, blurring) since HEX paper didn't.
+% realistic labelling assumption
 
 \section{HEX with learning}
 
