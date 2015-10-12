@@ -48,7 +48,7 @@ def get_accuracy(Y_predict, Y_truth, lim_states=False):
     return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
-def to_crf(Y, state_space, scheme):
+def to_crf(Y, state_space, scheme):  # TODO
     """
     :param Y: N * D numerical array of prediction.
     :param state_space: list of legal binary states.
@@ -63,7 +63,7 @@ def to_crf(Y, state_space, scheme):
         scores = map(lambda s: np.log(y[s]).sum(), state_space)
         return state_space[np.argmax(scores)]
     def pn_step(y):  # requires predictions to be P(y_i=1)
-        scores = map(lambda s: np.log(y[s]).sum() + np.log(1 - y[np.logical_not(s)]).sum(), state_space)
+        scores = map(lambda s: y[s].sum() + ((1 - y)[np.logical_not(s)]).sum(), state_space)
         return state_space[np.argmax(scores)]
     step_func = {'raw': raw_step, 'log': log_step, 'pos_neg': pn_step}
     return np.array(map(step_func[scheme], Y), dtype=bool)

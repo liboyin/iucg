@@ -66,20 +66,23 @@ Caffe setup: `base_lr=0.00005, drop_by=0.00001, step=10000, local=x5`
 id | setup
 -- | ------
 1  | Softmax with subset of training data labeled to leaf nodes (`train_leaf.[relabel].h5`)
-2  | Softmax with complete set of training data (`train.[relabel].h5`)
-3  | Independent prediction score + original CRF
-4  | Independent prediction to probability (sigmoid)
-5  | Independent prediction to probability + original CRF
-6  | Independent prediction to probability + positive-negative CRF
+2  | Softmax with complete training data (`train.[relabel].h5`)
+3  | Original CRF
+4  | Sigmoid + p&n CRF
+4  | Sigmoid + p&n CRF with pairwise term
+6  | Sigmoid + learnable CRF
 
 id |   0%          |   50%         |   90%
 -- | ------------- | ------------- | -------------
-1  |   n/a         | 0.7260        | 0.6543
-2  | 0.7256        | 0.6775        | 0.2814/0.3289
-3  | 0.7209/0.6585 | 0.6823/0.3479 | 0.4026/0.0332
-4  | 0.7256        | 0.6775        | 0.2814/0.3289
-5  | 0.7238/0.0332 | 0.6757/0.0332 | 0.3699/0.0332
-6  | 0.7209/0.6585 | 0.6823/0.3479 | 0.4026/0.0332
+1  |   n/a         | 0.TODO        | 0.TODO
+2  | 0.1716/0.7268 | 0.0047/0.6739 | 0.0000/0.3230
+3  | 0.6573/0.7209 | 0.3182/0.6852 | 0.0000/0.5029
+4  | 0.6579/0.7214 | 0.3182/0.6799 | 0.0000/0.5000
+5  | 0.6923/0.7238 | 0.4631/0.6252 | 0.0005/0.3129
+6  | 0.6852        | 0.4643        | 0.1454
+
+Accuracy reported in full state space / limited state space
+Scheme 1 & 6 only apply to full state space
 
 ###Legacy: Experiments for Optimal LR
 
