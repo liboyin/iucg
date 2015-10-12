@@ -7,7 +7,7 @@ with open('cache/hex.pickle', mode='rb') as h:
 H_e = hex_data['H_e']
 state_edges = hex_data['state_edges']
 state_space = hex_data['state_space']
-# state_space = filter(lambda x: x[:20].any(), state_space)  # limit state space to leaf node
+state_space = filter(lambda x: x[:20].any(), state_space)  # limit state space to leaf node
 S = len(state_space)  # S: state space size
 V = 27  # V: number of nodes
 E = 24  # E: number of edges
@@ -21,8 +21,9 @@ class LearnableCrf:
         self.Phi = Phi_train
         self.N = len(Phi_train)
         self.Y_train = Y_train
-        self.opt_theta = fmin_l_bfgs_b(func=self.objective, x0=np.ones(V + E, dtype=float), fprime=self.obj_prime,
-                                       bounds=[(0, None)] * (V + E), epsilon=1e-6, iprint=0)[0]
+        self.opt_theta = np.ones(51, dtype=float)
+        # self.opt_theta = fmin_l_bfgs_b(func=self.objective, x0=np.ones(V + E, dtype=float), fprime=self.obj_prime,
+        #                                bounds=[(0, None)] * (V + E), epsilon=1e-6, iprint=0)[0]
 
     def update(self, theta):
         def pairwise_step(phi):
@@ -63,3 +64,10 @@ class LearnableCrf:
         self.N = len(Phi_test)
         self.update(self.opt_theta)
         return np.array([state_space[x] for x in self.P_norm.argmax(axis=1)], dtype=bool)
+
+    def predict_top3(self, Phi_test):
+        self.Phi = Phi_test
+        self.N = len(Phi_test)
+        self.update(self.opt_theta)
+        P_argsort = np.argsort(self.P_norm, axis=1)
+        return np.array([np.vstack(tuple(state_space[P_argsort[i, j]] for j in range(-3, 0))) for i in range(0, self.N)], dtype=bool)
