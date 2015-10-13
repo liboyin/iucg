@@ -48,7 +48,7 @@ def get_accuracy(Y_predict, Y_truth, lim_states=False):
     return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
-def to_crf(Y, state_space, scheme):  # TODO
+def to_crf(Y, state_space, scheme):
     """
     :param Y: N * D numerical array of prediction.
     :param state_space: list of legal binary states.
