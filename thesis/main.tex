@@ -19,11 +19,11 @@ The original HEX model \cite{deng2014large} is an extension of the baseline flat
 \begin{figure}[htbp]
 \centering
 \includegraphics[scale=0.5]{naive.pdf}
-\caption{A simple HEX graph with three nodes in the original concept space (in rectangles) and their hypernyms (in ellipsoids). Directed (blue) edges denote semantical hierarchy: $(a\rightarrow b)$ if $a$ is a hypernym of $b$ according to WordNet; and undirected edges (green) denote exclusion. Since exclusive relationship is not covered by WordNet, the exclusive subgraph is initialized greedily: two concepts are exclusive unless they share a common descendant in the hierarchical subgraph. Note that: 1. Concepts in the original concept space are mutually exclusive. 2. The hierarchical subgraph is in general a DAG rather than a tree.}
+\caption{A simple HEX graph with three nodes in the original concept space (in rectangles) and their hypernyms (in ellipsoids). Directed edges denote semantical subsumption: $(a\rightarrow b)$ if $a$ is a hypernym of $b$ according to WordNet; and undirected edges denote exclusion. Since exclusive relationship is not covered by WordNet, the exclusive subgraph is initialized greedily: two concepts are exclusive unless they share a common descendant in the hierarchical subgraph. Note that the hierarchical subgraph is in general a DAG rather than a tree; and it is not necessarily the case that all concepts in the original concept space are bottom-level nodes in the hierarchical subgraph. Values beside each nodes are to be used later.}
 \label{fig:naive}
 \end{figure}
 
-Denoting the set of vertices by $V$, the set of hierarchical edges by $E_h$, and the set of exclusive edges by $E_e$, the joint assignment $y\in\{0,1\}^V$ can be defined as a CRF:
+Denoting the set of vertices by $V$, the set of hierarchical edges by $E_h$, and the set of exclusive edges by $E_e$, the joint assignment $y\in\{0,1\}^V$ can be defined as a conditional random field:
 \begin{equation}
 \tilde{p}(y|x)=\prod_{i\in V}\exp\{f_i(x;w)I[y_i=1]\}I[y\text{ legal}]
 \label{eqn:naive}
@@ -35,12 +35,12 @@ I[y\text{ legal}]=\prod_{(v_i,v_j)\in E_h}I[(y_i,y_j)\neq(0,1)]\prod_{(v_i,v_j)\
 \label{eqn:legal}
 \end{equation}
 
-Thanks to these semantic constraints, the state space of a HEX graph is significantly smaller than independent multiclass classification on the same concept space. For example, with local confidence given beside each node in \hyperref[fig:naive]{figure~\ref{fig:naive}}, the valid states of the HEX graph and their respective potentials are listed in \hyperref[tab:naive]{table~\ref{tab:naive}}:
+Thanks to these semantic constraints, the state space of a HEX graph is significantly smaller than independent multiclass classification on the same concept space. For example, with local confidence given beside each node in \hyperref[fig:naive]{figure~\ref{fig:naive}}, the valid assignments of the HEX graph and their respective potentials are listed in \hyperref[tab:naive]{table~\ref{tab:naive}}:
 
 \begin{table}[htbp]
 \centering
 \begin{tabular}{r|l}
-state & $\tilde{p}(y|x)$\\
+assignment & $\tilde{p}(y|x)$\\
 \hline
 $\varnothing$ & $\exp(0)$\\
 \{animal\} & $\exp(0.9)$\\
@@ -49,7 +49,7 @@ $\varnothing$ & $\exp(0)$\\
 \{animal, pet, cat\} & $\exp(0.9+0.8+0.1)$\\
 \{animal, pet, dog\} & $\exp(0.9+0.8+0.3)$
 \end{tabular}
-\caption{Valid states of the HEX graph in \hyperref[fig:naive]{figure~\ref{fig:naive}} and their respective potentials. In this example, the HEX model predicts \{animal, pet, dog\}.}
+\caption{Valid assignments of the HEX graph in \hyperref[fig:naive]{figure~\ref{fig:naive}} and their respective potentials. In this example, the HEX model predicts \{animal, pet, dog\}.}
 \label{tab:naive}
 \end{table}
 
@@ -58,38 +58,37 @@ Finally, an important assumption of \cite{deng2014large} is that mechanical Turk
 \subsection{Observations}
 \label{sec:observ}
 
-Note that a valid state does not have to have an active node in the original concept space. (Actually, it does not have to have an active node at all, as $\varnothing$ is a valid state according to \hyperref[eqn:legal]{(\ref{eqn:legal})}.) This allows an image to be classified to abstract concepts when the classifier is not confident enough to classify to a more concrete one. This is by no doubt a desirable feature for deployment. However, since all images are labelled in the original concept space of the dataset, classifying to the extended concept space makes performance evaluation troublesome. This issue was not addressed in \cite{deng2014large}. In this work, accuracy is tested both in the extended concept space and the original one, by limiting the legal state space to states with an active bottom-level node in the hierarchical subgraph.
+Note that a valid assignment does not have to have an active node in the original concept space. (Actually, it does not have to have an active node at all, as $\varnothing$ is a valid assignment according to \hyperref[eqn:legal]{(\ref{eqn:legal})}.) This allows an image to be classified to abstract concepts when the classifier is not confident enough to classify to a more concrete one. This is by no doubt a desirable feature for deployment. However, since all images are labelled in the original concept space of the dataset, classifying to the extended concept space makes performance evaluation troublesome. This issue was not addressed in \cite{deng2014large}. In this work, accuracy is tested both in the extended concept space and in the original one, by limiting the legal state space to assignments with an active bottom-level node in the hierarchical subgraph. This is only valid for datasets where all concepts in the original concept space are bottom-level nodes in the HEX graph.
 
-Also note that in \hyperref[tab:naive]{table~\ref{tab:naive}}, the competition between state \{animal, pet, cat\} and \{animal, pet, dog\} depends entirely on the confidence of node ``dog'' and ``cat''. However, to discriminate between \{animal, pet, dog\} and \{animal, person\} requires examining the confidence along different paths. From this example it is clear that, in the testing stage, confidence is passed down the hierarchy from abstract concepts to concrete ones. The other side of the same coin is that, during the training stage of the underlying unary classifier, nodes corresponding to abstract concepts receive more training data compared to their children. This can be seen as confidence being passed up in the hierarchy. Such bidirectional propagation of confidence explains the advantage of the HEX model under the realistic labelling assumption.
+Also note that in \hyperref[tab:naive]{table~\ref{tab:naive}}, the competition between assignment \{animal, pet, cat\} and \{animal, pet, dog\} depends entirely on the confidence of node ``dog'' and ``cat''. However, to discriminate between \{animal, pet, dog\} and \{animal, person\} requires examining the confidence along different paths. From this example it is clear that, in the testing stage, confidence is passed down the hierarchy from more abstract concepts to more concrete ones. The other side of the same coin is that, during the training stage of the underlying unary classifier, a node corresponding to abstract concepts receive all training data of its children. This can be seen as confidence being passed up in the hierarchy, from more concrete concepts to more abstract ones. Such bidirectional propagation of confidence explains the advantage of the HEX model under the realistic labelling assumption. Note that the exclusive subgraph does not take part in the propagation of confidence.
 
-The third observation is a combined consequence of the greedy exclusion setup, as discussed in the caption of \hyperref[tab:naive]{table~\ref{tab:naive}}, and the greedy nature of the potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}. The prerequisite for the original HEX model to work is that the decision boundary of $f_i(x;w)$ is zero for all $i$. This is not a problem in \cite{deng2014large}, where a convolutional neural network \cite{krizhevsky2012imagenet} is used as the underlying unary classifier. However, if a probabilistic classifier is used, in which case $f_i(x;w)\in[0,1]$ and the decision boudary is 0.5, then it is guaranteed that a bottom-level node will be activated (see \hyperref[sec:fail]{appendix~\ref{sec:fail}} for proof). This means that the effective state space size is reduced to the that of the original concept space. In other words, the HEX model will not be able to predict to an abstract concept. This defeats the purpose of HEX, although inference can be performed easily with brute force calculation of the potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}.
+The third observation is a combined consequence of the greedy exclusion setup, as discussed under \hyperref[tab:naive]{table~\ref{tab:naive}}, and the greedy nature of the potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}. The prerequisite for the original HEX model is that the decision boundary of $f_i(x;w)$ is zero for all $i$. A unary prediction above zero gives support to a node being true, whereas a unary prediction below zero gives support to that node being false. In \cite{deng2014large} this is not a problem, as a convolutional neural network \cite{krizhevsky2012imagenet} is used as the underlying unary classifier; and that the a neural network can learn its decision boundary form training data. However, if a probabilistic classifier is used, in which case $f_i(x;w)\in[0,1]$ and the decision boudary is 0.5, then it is guaranteed that a bottom-level node will be activated (see \hyperref[sec:fail]{appendix~\ref{sec:fail}} for proof). This means that the effective state space size is reduced to the number of bottom-level nodes. In other words, the HEX model will not be able to predict to an abstract concept. This defeats the purpose of HEX, although a smaller state space means faster inference and higher accuracy.
 
 Finally, listed below are two less important observations:
 \begin{enumerate}
 \item There are no learnable variables in this CRF. In other words, all learning is performed in the underlying unary classifier.
-\item Mathematically, CRF requires $\forall y:\tilde{p}(y|x)>0$. However, computationally, assigning zero to $\tilde{p}(y|x)$ can be interpreted as assigning an infinitesimal value. Therefore, the above definition is computationally equivalent to a legitimate CRF.
+\item Mathematically, CRF requires $\forall y:\tilde{p}(y|x)>0$. However, computationally, assigning zero to $\tilde{p}(y|x)$ can be interpreted as assigning an infinitesimal value. Therefore, the above definition is computationally a legitimate CRF.
 \end{enumerate}
 
 \subsection{Problems}
 \label{sec:problem}
 
-Consider the situation illustrated in \hyperref[fig:depth]{figure~\ref{fig:depth}}:
 \begin{figure}[htbp]
 \centering\includegraphics[scale=0.5]{depth.pdf}
-\caption{Where a state with more active nodes of lower confidence wins over a state with fewer active nodes of higher confidence. Exclusive edges are omitted, as they do not carry further information once the state space has been calculated. The decision boundary of the underlying unary classifier is zero in this example.}
+\caption{Where an assignment with more active nodes of lower confidence wins over an assignment with fewer active nodes of higher confidence. Exclusive edges are not drawn, as they do not carry further information once the state space has been calculated.}
 \label{fig:depth}
 \end{figure}
 
-Following the same logic as \hyperref[tab:naive]{table~\ref{tab:naive}}, the original HEX model predicts \{animal, pet, dog, Labrador\}. However, this is a result of more active nodes rather than active nodes of higher confidence. Intuitively, \{animal, person\} seems a better prediction. In addition, the two aforementioned assignments are very close to the decision boundary between them. It will be desirable if the model can make a prediction that is further from the decision boundary by taking into account the confidence of other nodes, especially those with unary predictions far from the decision boundary.
+Consider the situation illustrated in \hyperref[fig:depth]{figure~\ref{fig:depth}}. Following the same logic as \hyperref[tab:naive]{table~\ref{tab:naive}}, the original HEX model predicts \{animal, pet, dog, Labrador\}. However, this is a result of more active nodes rather than active nodes of higher confidence. Intuitively, \{animal, person\} seems a better prediction. In addition, the two aforementioned assignments are only separated by 0.1 in log unnormalised potential. It will be desirable if the model can make a prediction that is further from the decision boundary by taking into account the confidence of other nodes, especially those with unary predictions far from the decision boundary.
 
-The second problem is a combined consequence of the realistic labelling assumption and using convolutional neural network as the underlying unary classifier. When the relabelling rate is high, most images are relabelled to their immediate parents. This does \emph{not} indicate that the unary classifiers for concepts in the original concept space receive fewer training samples, and are therefore undertrained; instead, it means that these classifiers receive incorrectly-labelled training data, where most images of concept X are labelled ``NOT X''. In such case, because CNN is trained as an independent multiclass classifier, those unary classifiers will pickup the imbalance, and simply predict ``false'' for any input images. The original HEX model cannot cope with such situation due to the greedy nature of potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}, and will deactivate bottom-level concepts. This hypothesis will be confirmed in \hyperref[sec:exp1]{section~\ref{sec:exp1}}.
+The second problem is a combined consequence of the realistic labelling assumption and using CNN as the underlying unary classifier. When the relabelling rate is high, most images are relabelled to their immediate parents. This means that for each concept X, most instances of it are correctly labelled to all its ancestors, but incorrectly labelled ``NOT X''. This create a highly unbalanced and internally inconsistent dataset. In such case, because CNN is trained as an independent multiclass classifier, the unary classifiers will simply learn to predict ``false'' for any input images. (This hypothesis will be confirmed in \hyperref[sec:exp1]{section~\ref{sec:exp1}}.) The original HEX model cannot cope with such situation, as the potential function \hyperref[eqn:naive]{(\ref{eqn:naive})} will deactivate a bottom-level node as long as its confidence is below the decision boundary.
 
 \clearpage
 \section{Reimplementation}
 \subsection{Dataset}
 \label{sec:data}
 
-The original HEX model is reimplemented as the baseline of this work. While \cite{deng2014large} used ILSVRC 2012 dataset for its rich structure in label space, this work employed PASCAL VOC 2012 \cite{pascal-voc-2012} for its simplicity (see \hyperref[fig:hex]{figure~\ref{fig:hex}} for the complete hierarchical subgraph). Note that the two datasets are designed for different tasks: ILSVRC is an exclusive multiclass classification problem, whereas PASCAL is an independent multiclass classification problem. To adapt to ILSVRC task 1, the train\,+\,val dataset of the PASCAL dataset is filtered through the following criteria:
+The original HEX model is reimplemented as the baseline of this work. While \cite{deng2014large} used ILSVRC 2012 dataset for its rich structure in the label space, this work employs PASCAL VOC 2012 \cite{pascal-voc-2012} for its simplicity (see \hyperref[fig:hex]{figure~\ref{fig:hex}} for the complete hierarchical subgraph). Note that the two datasets are designed for different tasks: ILSVRC is an exclusive multiclass classification problem, whereas PASCAL is an independent multiclass classification problem. To adapt to ILSVRC task 1, the train\,+\,val dataset of the PASCAL dataset is filtered through the following criteria:
 \begin{enumerate}
 \item If there is only one annotated object in the image, the image is labelled to that object.
 \item If the largest annotated object in the image is more than twice as large as the second largest one, the image is labelled to its dominating object.
@@ -97,11 +96,11 @@ The original HEX model is reimplemented as the baseline of this work. While \cit
 \begin{figure}[p]
 \centering
 \includegraphics[scale=1.1]{full.pdf}
-\caption{The PASCAL dataset has 20 concepts. In this work, these concepts are augmented by 7 of their hypernyms, creating a forest of three trees, 27 nodes, and 24 hierarchical edges. In comparison, the HEX graph for ImageNet contains 1000 nodes corresponding to the original concept space, and 840 nodes corresponding to their hypernyms.}
+\caption{The PASCAL dataset has 20 concepts. In this work, these concepts are augmented by 7 of their hypernyms, creating a forest of three trees with 27 nodes and 24 hierarchical edges. Exclusive edges are not drawn since they can be implied by the hierarchical subgraph. The state space of this HEX graph has size 28. In comparison, the HEX graph in \cite{deng2014large} contains 1000 nodes corresponding to the original concept space, and 820 nodes corresponding to their hypernyms.}
 \label{fig:hex}
 \end{figure}
 
-Another major difference between ImageNet and PASCAL is that the former one is a balanced dataset, while the latter is unbalanced. For example, after filtering, there are 5324 images labelled as ``person'', whereas the second most frequent label ``dog'' has only 817 instances. To rebalance the dataset, 950 images of ``person'' are subsampled from the dataset.  After preprocessing, the dataset contains 8473 images in total. These images are then split 3:1:1 into train/validation/test set. The distribution of images across labels is illustrated in \hyperref[fig:distro]{figure~\ref{fig:distro}}.
+Another major difference between ImageNet and PASCAL is that the former one is a balanced dataset, while the latter is highly unbalanced. For example, after filtering, there are 5324 images labelled as ``person'', whereas the second most frequent label ``dog'' has only 817 instances. To rebalance the dataset, 950 images of ``person'' are subsampled from the dataset.  After preprocessing, the dataset contains 8473 images in total. These images are then split 3:1:1 into train/validation/test set. The distribution of images across labels is illustrated in \hyperref[fig:distro]{figure~\ref{fig:distro}}.
 \begin{figure}[htbp]
 \centering
 \includegraphics[scale=0.8]{distro.pdf}
@@ -111,30 +110,29 @@ Another major difference between ImageNet and PASCAL is that the former one is a
 
 \subsection{Algorithms}
 
-For consistency with \cite{deng2014large}, the underlying unary classifier is based on \cite{krizhevsky2012imagenet} rather than the current state-of-the-art \cite{simonyan2014very}. The convolutional neural network is fine-tuned as an independent multiclass classifier with Caffe \cite{jia2014caffe}. Note that since the original HEX model has no learning part, it was built as a layer into the CNN, achieving end-to-end learning. In this work, CNN and CRF are implemented separately in order to test multiple variations of the HEX model with the same underlying unary classifier. The fine-tuning process finished within five hours on a GeForce GTX 470 graphical card.
+For consistency with \cite{deng2014large}, the underlying unary classifier is based on \cite{krizhevsky2012imagenet} rather than the current state-of-the-art \cite{simonyan2014very}. The CNN is fine-tuned as an independent multiclass classifier with Caffe \cite{jia2014caffe}, where each image is projected to a 27-dimensional vector. Note that since the original HEX model has no learning part, it was built as a layer into the CNN, achieving end-to-end learning. In this work, CNN and CRF are implemented separately in order to test multiple variants of the HEX model with the same underlying unary classifier. The fine-tuning process finished within five hours on a GeForce GTX 470 graphical card.
 
-A consequence of the simpler concept space is the change of inference algorithm. In \cite{deng2014large}, inference is performed by MAP loopy belief propagation on the maximally sparsified HEX graph, where the local state space of each clique is limited by semantic restrictions. In this work, thanks to the tiny state space of PASCAL, the inference is performed by calculating the potential function directly for each possible states in the global state space.
+One consequence of a simpler concept space is the change of inference algorithm. In \cite{deng2014large}, inference is performed by MAP loopy belief propagation on the HEX graph, where the local state space of each clique is limited by semantic restrictions. In this work, due to the tiny concept space of dataset, the inference is performed by calculating the potential function directly for each possible states in the global state space.
 
-Finally, to guarantee that the benefit of the HEX model is consistent regardless of the underlying unary classifier, different variations of the HEX model are also paired with SVM as the underlying unary classifier. An array of 27 SVMs is trained, each corresponding to a node in the extended concept space. The SVM array accepts the output of the last-but-one layer of \cite{krizhevsky2012imagenet} as input, assuming that 4096 neurons provide sufficiently diverse and accurate feature responses without fine-tuning on the PASCAL dataset. The SVM array predicts either distance to decision boundaries or the probability of each concept being activated. The training process for the SVM array finished within ten hours without parallel training.
+Finally, to guarantee that the benefit of the HEX model is consistent regardless of the underlying unary classifier, different variants of the HEX model are also paired with SVM as the underlying unary classifier. An array of 27 SVMs is trained, each corresponding to a node in the HEX graph. The SVM array accepts the output of the last-but-one layer of \cite{krizhevsky2012imagenet} as input, assuming that 4096 neurons provide sufficiently diverse and accurate feature responses without fine-tuning on the PASCAL dataset. The SVM array predicts either distance to decision boundaries (corresponding to raw CNN output), or the probability of each concept being activated (corresponding to CNN output with sigmoid transformation). The training process for the SVM array finished within ten hours without parallel training.
 
 \subsection{Experiments}
 \label{sec:exp1}
-% original paper didn't give more than accuracy. more detailed analysis in exp2
 
 \begin{table}[htbp]
 \centering
 \begin{tabular}{c|c|c|c|c}
-Scheme & 0\% & 50\% & 90\% & 95\%\\
+ & 0\% & 50\% & 90\% & 95\%\\
 \hline
-Baseline & 0.626(0.843) & 0.564(0.796) & 0.529(0.772) & 0.508(0.760)\\
-Independent & N/A & 0.210(0.452) & 0.093(0.272) & 0.056(0.172)\\
+Softmax & 0.626(0.843) & 0.564(0.796) & 0.529(0.772) & 0.508(0.760)\\
+Logistic & N/A & 0.210(0.452) & 0.093(0.272) & 0.056(0.172)\\
 HEX & N/A & 0.582(0.808) & 0.553(0.794) & 0.524(0.772)\\
 \hline
-Baseline & TODO & TODO & TODO & N/A\\
-Independent & 0.171(0.733) & 0.004(0.625) & 0.000(0.172) & N/A\\
+Softmax & 0.7686 & 0.3997 & 0.0148 & N/A\\
+Logistic & 0.171(0.733) & 0.004(0.625) & 0.000(0.172) & N/A\\
 HEX & 0.657(0.777) & 0.318(0.719) & 0.000(0.477) & N/A
 \end{tabular}
-\caption{Comparison of empirical result in \cite{deng2014large} with reimplementation. Due to smaller dataset, 95\% relabelling rate was not attempted in this work. The result analysis of the original paper only provided accuracy. In this work, more detailed analysis is provided in \hyperref[sec:exp2]{section~\ref{sec:exp2}}}
+\caption{Comparison of empirical test result in \cite{deng2014large} (upper) with reimplementation in this work (lower). Performance is reported in top\,-1 accuracy (top\,-3 accuracy). Due to smaller dataset, 95\% relabelling rate was not attempted in this work. Detailed analysis of the reimplemented system is provided in \hyperref[sec:exp2]{section~\ref{sec:exp2}}. Note that while the original HEX model managed to beat the baseline in \cite{deng2014large}, it falls below the baseline on the PASCAL dataset.}
 \end{table}
 
 \begin{table}[htbp]
@@ -150,105 +148,114 @@ dog & $0.7517\pm0.3424$ & $0.4533\pm0.2970$ & $0.0222\pm0.0209$\\
 pet & $0.7971\pm0.3271$ & $0.7828\pm0.3327$ & $0.7832\pm0.3287$\\
 animal & $0.9004\pm0.2301$ & $0.9005\pm0.2290$ & $0.8999\pm0.2322$
 \end{tabular}
-\caption{Under different relabelling rates, with fully trained CNN, the response on different concepts on the validation dataset, normalised with sigmoid function, and reported in $\mu\pm\sigma$. With 817 instances, label ``dog'' is a frequent label, whereas rare label ``diningtable'' has only 229 instances. Clearly, abstract concepts are not affected by relabelling rate, yet concrete ones drop from above the decision boundary to below. This experiment also shows that CNN learns highly abstract concepts accurately.}
+\caption{Under different relabelling rates, with fully trained CNN, the mean and standard deviation of response from validation images labelled ``diningtable'' (upper) and ``dog'' (lower). Note that ``household'' is a hypernym of``furniture'', which is further a hypernym of ``dog''; and ``animal'' is a hypernym of ``pet'', a further hypernym of ``dog''. With 490 instances in the training set, label ``dog'' is a frequent concept, whereas rare concept ``diningtable'' has 137 instances. Clearly, the unary confidence on abstract concepts are not affected by relabelling rate, yet the unary response on concrete ones drop to below the decision boundary. This experiment also shows that CNN learns highly abstract concepts accurately, even for concepts without obvious visual clues.}
 \end{table}
 
 \clearpage
 \section{Improvements}
+\subsection{Algorithms}
 
-% Use all images to train the CNN, and images labelled to leaf nodes to train the CRF.
+Based on the original HEX model, this work delivers improvements in three stages. The high-level goal is stated as follows: With little confidence on bottom-level nodes, the classifier should still attempt to classify to an assignment with an active bottom-level concept. However, in case the classifier really cannot make a decision, it should still be allowed to predict to an assignment in the extended concept space.
 
-Based on the original HEX model, this work delivers improvements in three stages. In the first stage, the confidence on inactive nodes is taken into account, in addition to active ones. The resulting potential function is shown below:
+In the first stage, the confidence on inactive nodes are taken into account, in addition to active ones. The resulting potential function is shown as follows:
 \begin{equation}
 \tilde{p}(y|x)=\prod_{i\in V}\exp\{f_i(x;w)I[y_i=1]+(1-f_i(x;w))I[y_i=0]\}I[y\text{ legal}]
 \label{eqn:pn}
 \end{equation}
 
-This fix brings two benefits: First, the potential function considers the same number of nodes for different states, and therefore fixing the unnormalised depth problem mentioned in \hyperref[sec:problem]{section~\ref{sec:problem}}. Second, the potential function is able to refer to other nodes, benefiting from those that are far from the decision boundary. [std dev on cnn output on bottom-level nodes vs internal ones]
+where $f_i(x;w)$ denotes the confidence of node $i$ being true, and $1-f_i(x;w)$ denotes the confidence of node $i$ being false. This requires the range of unary prediction to be within $[0,1]$, and the decision boundary to be 0.5. To achieve this, unary predictions from the underlying CNN is normalised with the sigmoid function.
 
-In the second stage, the unsure bottom-level nodes problem is solve by taking into account the pairwise terms, especially the hierarchical edges that connect the bottom-level nodes and their immediate parents. Two regularisation terms are also added to the potential function so that the contributions from nodes and edges are balanced.
+Theoretically, stage 1 fix should benefit in two aspects: First, the potential function considers the same number of nodes for every legal assignment, therefore fixing the unnormalised depth problem discussed in \hyperref[sec:problem]{section~\ref{sec:problem}}. Second, the potential function is able to refer to the confidence on inactive nodes, hence benefiting from those that are far from the decision boundary. However, a massage on \hyperref[eqn:pn]{(\ref{eqn:pn})} shows that it is not far from the original potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}:
+\begin{align}
+\tilde{p}(y|x)&=\prod_{i\in V}\exp\{f_i(x;w)I[y_i=1]+(1-f_i(x;w))(1-I[y_i=1])\}I[y\text{ legal}]\nonumber\\
+&=\prod_{i\in V}\exp\{(2f_i(x;w)-1)I[y_i=1]+(1-f_i(x;w))\}I[y\text{ legal}]\nonumber\\
+&=\tilde{p}(\varnothing|x)\prod_{i\in V}\exp\{(2f_i(x;w)-1)I[y_i=1]\}I[y\text{ legal}]
+\end{align}
 
-In the third stage, Enable learning on unary and pairwise term weighting. With little confidence on the bottom layer classifiers, the problem is to attempt to classify to the bottom layers. However, in case the classifier really cannot make a decision, it should be allowed to stop at an intermediate layer. In order to do so, the CRF is trained with all images that are labelled to bottom-level concepts.
+where $\tilde{p}(\varnothing|x)$ denotes the unnormalised potential of assignment $\varnothing$. Since it is a constant for all $y$, it can be absorbed into $\frac{1}{Z(x)}$. Also, the transformation on $\exp\{(2f_i(x;w)-1)I[y_i=1]\}$ does not affect the rank of $\tilde{p}(y|x)$ for all $y$. Therefore, the difference between \hyperref[eqn:naive]{(\ref{eqn:naive})} and \hyperref[eqn:pn]{(\ref{eqn:pn})} is no more than the sigmoid transformation.
 
-\[\theta=\argmin_\theta\left\{-\frac{C}{N}\log\prod_{(x,y)\in D}p_\theta(y|x)+\frac{1}{2}\|\theta\|^2\right\}\]
+In the second stage, pairwise term is added to the potential function. This can be seen as a remedy to the low confidence on bottom-level nodes when the relabelling rate is high, as the confidence on their immediate parents are not affected. In addition, two regularisation terms are added to the potential function so that the contributions from unary terms and pairwise terms are balanced. The resulting potential function is shown as follows:
+\begin{align}
+p(y|x)=\frac{1}{Z(x)}&\exp\left\{\frac{1}{|V|}\sum_{i\in V}x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\right\}\nonumber\\
+\cdot&\exp\left\{\frac{1}{|E_h|}\sum_{(i,j)\in E_h}x_ix_j\cdot I[y_i=y_j=1]\right\}\cdot I[y\text{ legal}]
+\end{align}
 
-\begin{align*}
-p_\theta(y|x)=\frac{1}{Z(x)}&\exp\left\{\frac{1}{|V|}\sum_{i\in V}w_i\big(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\big)\right\}\\
-\cdot&\exp\left\{\frac{1}{|E|}\sum_{(i,j)\in E}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\right\}\cdot I[y\text{ legal}]
-\end{align*}
+In the third stage, a weighting factor is multiplied to each unary and pairwise term. This weighting factor is learned form all images labelled to bottom-level nodes in the dataset. Note that such training scheme cannot cover concepts from the original label space that are not bottom-level nodes in the HEX graph, as it is not possible to distinguish between images that are correctly labelled to that concept, or images that are labelled to its immediate parents. The resulting potential function is shown as follows:
+\begin{align}
+p_\theta(y|x)=\frac{1}{Z(x)}&\exp\left\{\frac{1}{|V|}\sum_{i\in V}w_i\big(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\big)\right\}\nonumber\\
+\cdot&\exp\left\{\frac{1}{|E_h|}\sum_{(i,j)\in E_h}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\right\}\cdot I[y\text{ legal}]
+\end{align}
 
-\begin{align*}
-\log p_\theta(y|x)&=\frac{1}{|V|}\sum_{i\in V}w_i(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0])\\
-&\quad+\frac{1}{|E|}\sum_{(i,j)\in E}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]-\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)
-\end{align*}
+where $\theta$ is the concatenation of $\{\forall i\in V:w_i\}$ and $\forall(i,j)\in E_h:t_{ij}$. $\theta$ is selected by optimising for log-likelihood:
+\begin{equation}
+\theta=\argmin_\theta\left\{-\frac{C}{N}\log\prod_{(x,y)\in D}p_\theta(y|x)+\frac{1}{2}\|\theta\|^2\right\}
+\end{equation}
 
-\begin{align*}
+where the weighting of regularisation term $\frac{1}{2}\|\theta\|^2$ is controlled by $C$, a constant chosen by cross-validation. In this work, $C=1000$. The calculation of gradient is shown as follows:
+\begin{align}
 \nabla_\theta\log\prod_{(x,y)\in D}p_\theta(y|x)&=\begin{bmatrix}
 \nabla_w\log\prod_{(x,y)\in D}p_\theta(y|x)\\ 
 \nabla_t\log\prod_{(x,y)\in D}p_\theta(y|x)
-\end{bmatrix}\\
+\end{bmatrix}\nonumber\\
 &=\begin{bmatrix}
 \sum_{(x,y)\in D}\nabla_w\log p_\theta(y|x)\\ 
 \sum_{(x,y)\in D}\nabla_t\log p_\theta(y|x)
 \end{bmatrix}
-\end{align*}
+\end{align}
 
-\begin{align*}
-\nabla_w\log p_\theta(y|x)&=\underbrace{\frac{1}{|V|}\Big[x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\Big]_{i\in V}}_{\phi_u(x,y)}-\nabla_w\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\\
+\begin{align}
+\log p_\theta(y|x)&=\frac{1}{|V|}\sum_{i\in V}w_i(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0])\nonumber\\
+&\quad+\frac{1}{|E_h|}\sum_{(i,j)\in E_h}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]-\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)
+\end{align}
+
+\begin{align}
+\nabla_w\log p_\theta(y|x)&=\frac{1}{|V|}\Big[x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\Big]_{i\in V}-\nabla_w\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\nonumber\\
+&\quad\text{define }\phi_u(x,y)=\frac{1}{|V|}\Big[x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\Big]_{i\in V}\nonumber\\
 &=\phi_u(x,y)-\sum_{\hat{y}}p_\theta(\hat{y}|x)\cdot\phi_u(x,\hat{y})
-\end{align*}
+\end{align}
 
-\begin{align*}
-\nabla_w\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)&=\frac{1}{\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)}\nabla_w\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\\
-&=\frac{1}{Z(x)}\sum_{\hat{y}}\nabla_w\exp\left\{\frac{1}{|V|}\sum_{i\in V}w_i\big(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\big)\right\}\\
-&\quad\cdot\exp\left\{\frac{1}{|E|}\sum_{(i,j)\in E}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\right\}\\
-&=\frac{1}{Z(x)}\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\cdot\frac{1}{|V|}\Big[x_i\cdot I[\hat{y}_i=1]+(1-x_i)\cdot I[\hat{y}_i=0]\Big]_{i\in V}\\
+\begin{align}
+\nabla_w\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)&=\frac{1}{\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)}\nabla_w\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\nonumber\\
+&=\frac{1}{Z(x)}\sum_{\hat{y}}\nabla_w\exp\left\{\frac{1}{|V|}\sum_{i\in V}w_i\big(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\big)\right\}\nonumber\\
+&\quad\cdot\exp\left\{\frac{1}{|E_h|}\sum_{(i,j)\in E_h}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\right\}\nonumber\\
+&=\frac{1}{Z(x)}\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\cdot\frac{1}{|V|}\Big[x_i\cdot I[\hat{y}_i=1]+(1-x_i)\cdot I[\hat{y}_i=0]\Big]_{i\in V}\nonumber\\
 &=\sum_{\hat{y}}p_\theta(\hat{y}|x)\cdot\phi_u(x,\hat{y})
-\end{align*}
+\end{align}
 
-\begin{align*}
-\nabla_t\log p_\theta(y|x)&=\underbrace{\frac{1}{|E|}\Big[t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\Big]_{(i,j)\in E}}_{\phi_t(x,y)}-\nabla_t\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\\
+\begin{align}
+\nabla_t\log p_\theta(y|x)&=\underbrace{\frac{1}{|E_h|}\Big[t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\Big]_{(i,j)\in E_h}}_{\phi_t(x,y)}-\nabla_t\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\nonumber\\
 &=\phi_t(x,y)-\sum_{\hat{y}}p_\theta(\hat{y}|x)\cdot\phi_t(x,\hat{y})
-\end{align*}
+\end{align}
 
-\begin{align*}
-\nabla_t\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)&=\frac{1}{\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)}\nabla_t\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\\
-&=\frac{1}{Z(x)}\sum_{\hat{y}}\nabla_t\exp\left\{\frac{1}{|V|}\sum_{i\in V}w_i\big(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\big)\right\}\\
-&\quad\cdot\exp\left\{\frac{1}{|E|}\sum_{(i,j)\in E}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\right\}\\
-&=\frac{1}{Z(x)}\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\cdot\frac{1}{|E|}\Big[t_{ij}\cdot x_ix_j\cdot I[\hat{y}_i=\hat{y}_j=1]\Big]_{(i,j)\in E}\\
+\begin{align}
+\nabla_t\log\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)&=\frac{1}{\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)}\nabla_t\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\nonumber\\
+&=\frac{1}{Z(x)}\sum_{\hat{y}}\nabla_t\exp\left\{\frac{1}{|V|}\sum_{i\in V}w_i\big(x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\big)\right\}\nonumber\\
+&\quad\cdot\exp\left\{\frac{1}{|E_h|}\sum_{(i,j)\in E_h}t_{ij}\cdot x_ix_j\cdot I[y_i=y_j=1]\right\}\nonumber\\
+&=\frac{1}{Z(x)}\sum_{\hat{y}}\tilde{p}_\theta(\hat{y}|x)\cdot\frac{1}{|E_h|}\Big[t_{ij}\cdot x_ix_j\cdot I[\hat{y}_i=\hat{y}_j=1]\Big]_{(i,j)\in E_h}\nonumber\\
 &=\sum_{\hat{y}}p_\theta(\hat{y}|x)\cdot\phi_t(x,\hat{y})
-\end{align*}
+\end{align}
+
+The derivation agrees with the property that the gradient of CRF potential is the expectation of a feature function. Note that since weights represent the credibility of unary confidence, all-entries of $\theta$ are non-negative.
 
 \subsection{Experiments}
 \label{sec:exp2}
 
-\begin{table}[htbp]
-\centering
-\begin{tabular}{r|l}
-Scheme & Setup\\
-\hline
-1 & Ignore structure\\
-2 & Independent\\
-3 & Original CRF\\
-4 & Sigmoid + pn CRF\\
-5 & Sigmoid + pn CRF with pairwise term\\
-6 & Sigmoid + learnable CRF
-\end{tabular}
-\caption{Test schemes}
-\end{table}
+The summary of accuracy is shown in \hyperref[tab:summary]{table~\ref{tab:summary}}.
 
 \begin{table}[htbp]
 \centering
 \begin{tabular}{r|l|l|l}
-Scheme & 0\% & 50\% & 90\%\\
+ & 0\% & 50\% & 90\%\\
 \hline
-2 & 0.1716(0.7339) & 0.0047(0.6258) & 0.0000(0.1728)\\
-3 & 0.6573(0.7779) & 0.3182(0.7193) & 0.0000(0.4774)\\
-4 & 0.6579(0.7790) & 0.3182(0.7197) & 0.0000(0.5154)\\
-5 & 0.6923(0.7969) & 0.4631(0.7470) & 0.0005(0.5908)\\
-6 & 0.6882(0.7802) & 0.4643(0.6496) & 0.1454(0.3646)
+Baseline & 0.7686 & 0.3997 & 0.0148\\
+Independent & 0.1716(0.7339) & 0.0047(0.6258) & 0.0000(0.1728)\\
+Original HEX & 0.6573(0.7779) & 0.3182(0.7193) & 0.0000(0.4774)\\
+Stage 1 & 0.6579(0.7790) & 0.3182(0.7197) & 0.0000(0.5154)\\
+Stage 2 & 0.6923(0.7969) & 0.4631(0.7470) & 0.0005(0.5908)\\
+Stage 3 & 0.6882(0.7802) & 0.4643(0.6496) & 0.1454(0.3646)
 \end{tabular}
 \caption{complete(top1/top3). Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows.}
+\label{tab:summary}
 \end{table}
 
 \begin{table}[htbp]
@@ -260,24 +267,26 @@ Scheme & 0\% & 50\% & 90\%\\
 2 & 0.7268(0.8889) & 0.6739(0.8705) & 0.3230(0.5385)\\
 3 & 0.7209(0.8788) & 0.6852(0.8574) & 0.5029(0.7838)\\
 4 & 0.7214(0.8622) & 0.6799(0.8337) & 0.5000(0.7850)\\
-5 & 0.7238(0.7957) & 0.6252(0.7470) & 0.3129(0.5908)\\
+5 & 0.7238(0.7957) & 0.6252(0.7470) & 0.3129(0.5908)
 \end{tabular}
-\caption{limited(top1/top3). Scheme 6 only apply to the extended concept space. WHAT DOES IT SAY?}
+\caption{limited(top1/top3). Scheme 6 only apply to the extended concept space.}
 \end{table}
 
-Stage 1: The problem is that, as discussed in \hyperref[sec:data]{section~\ref{sec:data}}... so the pnHEX model holds back conservatively?
+Stage 1: enhanced numerical stability with low confidence???
+
+State 2: Original relationships are weak. A promising direction is to emphasize on more relationships
 
 Stage 3: It has been noticed that some weights are set to zero by optimisation.
 
 \clearpage
 \section{Discussions}
+\subsection{Scalability}
+
+Scalable until stage 2 with MAP LBP. Stage 3 is not scalable due to the brute force calculation of partition function. [download large hex graph from pHEX paper, see state space size]
+
 \subsection{Relationship to Probabilistic HEX}
 
 Afte the ECCV 14 paper, the original authors extended HEX to pHEX by relaxing 0/1 hard constraints to $u\in(0,1)$, and turning the HEX graph into an Ising model \cite{ding2015probabilistic}. pHEX managed to beat HEX by [TODO]. However, the crucial $u$ is chosen by cross-validation, and it still applies to all constraints in the graph. In addition, pHEX require a long time to train, although still much shorter than training the underlying CNN. Also, it uses the same potential function as original HEX. Compared to pHEX, this work focuses on using a more flexible potential function. In term of running time, these two works are not directly comparable since this work is not scalable.
-
-\subsection{Scalability}
-
-Scalable until stage 2. Stage 3 is not scalable due to the brute force calculation of partition function. [download large hex graph from pHEX paper, see state space size]
 
 \clearpage
 \appendix

@@ -21,7 +21,7 @@ class LearnableCrf:
         self.Phi = Phi_train
         self.N = len(Phi_train)
         self.Y_train = Y_train
-        # self.opt_theta = np.ones(51, dtype=float)  # non-learning p&n CRF with pairwise terms
+        # self.opt_theta = np.ones(V + E, dtype=float)  # non-learning p&n CRF with pairwise terms
         self.opt_theta = fmin_l_bfgs_b(func=self.objective, x0=np.ones(V + E, dtype=float), fprime=self.obj_prime,
                                        bounds=[(0, None)] * (V + E), epsilon=1e-6, iprint=0)[0]
 
