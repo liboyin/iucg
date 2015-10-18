@@ -47,9 +47,11 @@ $\varnothing$ & $\exp(0)$\\
 \{animal, pet\} & $\exp(0.9+0.8)$\\
 \{animal, person\} & $\exp(0.9-0.5)$\\
 \{animal, pet, cat\} & $\exp(0.9+0.8+0.1)$\\
-\{animal, pet, dog\} & $\exp(0.9+0.8+0.3)$
+\{animal, pet, dog\} & $\exp(0.9+0.8+0.5)$\\
+\{animal, pet, dog, Husky\} & $\exp(0.9+0.8+0.5-0.1)$\\
+\{animal, pet, dog, Labrador\} & $\exp(0.9+0.8+0.5+0.3)$
 \end{tabular}
-\caption{The extended state space, i.e.\ all valid assignments of the HEX graph in \hyperref[fig:naive]{figure~\ref{fig:naive}}, and their respective potentials. In this example, the most likely joint assignment is \{animal, pet, dog\}. The softmax baseline classifier, in the language of HEX, classifies to the original state space: \{animal, pet, cat\}, \{animal, pet, dog\}, and \{animal, person\}.}
+\caption{The extended state space, i.e.\ all valid assignments of the HEX graph in \hyperref[fig:naive]{figure~\ref{fig:naive}}, and their respective potentials. In this example, the most likely joint assignment is \{animal, pet, dog, Labrador\}. The softmax baseline classifier, in the language of HEX, classifies to the original state space: \{animal, pet, cat\}, \{animal, pet, dog\}, \{animal, pet, dog, Husky\}, \{animal, pet, dog, Labrador\}, and \{animal, person\}.}
 \label{tab:naive}
 \end{table}
 
@@ -88,7 +90,7 @@ The second problem is a combined consequence of the realistic labelling assumpti
 \subsection{Dataset}
 \label{sec:data}
 
-The original HEX model is reimplemented as the baseline of this work. While \cite{deng2014large} used ILSVRC 2012 dataset for its rich structure in the label space, this work employs PASCAL VOC 2012 \cite{pascal-voc-2012} for its simplicity. The complete hierarchical subgraph of HEX is shown in \hyperref[fig:hex]{figure~\ref{fig:hex}}. Note that the two datasets are designed for different tasks: ILSVRC is an exclusive multiclass classification problem, whereas PASCAL is an independent multiclass classification problem. To adapt to ILSVRC task 1, the train\,+\,val dataset of the PASCAL dataset is filtered through the following criteria:
+The original HEX model is reimplemented as the baseline of this work. While \cite{deng2014large} used ILSVRC 2012 dataset for its rich structure in the label space, this work employs PASCAL VOC 2012 \cite{pascal-voc-2012} for its simplicity. The complete hierarchical subgraph of HEX is shown in \hyperref[fig:hex]{figure~\ref{fig:hex}}. Note that the two datasets are designed for different tasks: ILSVRC is an exclusive multiclass classification problem, whereas PASCAL is an independent multiclass classification problem. To adapt to ILSVRC task 1, the train+val dataset of PASCAL is filtered through the following criteria:
 \begin{enumerate}
 \item If there is only one annotated object in the image, the image is labelled to that object.
 \item If the largest annotated object in the image is more than twice as large as the second largest one, the image is labelled to its dominating object.
@@ -100,7 +102,7 @@ The original HEX model is reimplemented as the baseline of this work. While \cit
 \label{fig:hex}
 \end{figure}
 
-Another major difference between ImageNet and PASCAL is that the former one is a balanced dataset, while the latter is highly unbalanced. For example, after filtering, there are 5324 images labelled as ``person'', whereas the second most frequent label ``dog'' has only 817 instances. To rebalance the dataset, 950 images of ``person'' are subsampled from the filtered dataset.  After preprocessing, the dataset contains 8473 images in total. These images are then split 3:1:1 into train/validation/test set. The distribution of images across labels is illustrated in \hyperref[fig:distro]{figure~\ref{fig:distro}}.
+Another major difference between ImageNet and PASCAL is that the former one is a balanced dataset, while the latter is highly unbalanced. For example, after filtering, there are 5,324 images labelled as ``person'', whereas the second most frequent label ``dog'' has only 817 instances. To rebalance the dataset, 950 images of ``person'' are subsampled from the filtered dataset.  After preprocessing, the dataset contains 8,473 images in total. These images are then split 3:1:1 into train/validation/test set. The distribution of images across labels is illustrated in \hyperref[fig:distro]{figure~\ref{fig:distro}}.
 \begin{figure}[htbp]
 \centering
 \includegraphics[scale=0.8]{distro.pdf}
@@ -110,11 +112,11 @@ Another major difference between ImageNet and PASCAL is that the former one is a
 
 \subsection{Algorithms}
 
-For consistency with \cite{deng2014large}, the underlying unary classifier is based on \cite{krizhevsky2012imagenet} rather than the current state-of-the-art \cite{simonyan2014very}. The CNN, originally trained on ImageNet, is fine-tuned as an independent multiclass classifier on the aforementioned dataset, where each image is projected to a 27-dimensional vector. Note that since the original HEX model has no learning part, it was built as a layer into the CNN, achieving end-to-end learning. In this work, CNN and CRF are implemented separately in order to test multiple variants of the HEX model with the same underlying unary classifier. For the detail of CNN setup, refer to \hyperref[sec:setup]{appendix~\ref{sec:setup}}.
+For consistency with \cite{deng2014large}, the underlying unary classifier is based on \cite{krizhevsky2012imagenet} rather than the current state-of-the-art \cite{simonyan2014very}. The CNN, originally trained on ImageNet, is fine-tuned as an independent multiclass classifier on PASCAL, where each image is projected to a 27-dimensional vector. Note that since the original HEX model has no learning part, it was built as a layer into the CNN, achieving end-to-end learning. In this work, CNN and CRF are implemented separately, such that multiple variants of the HEX model can be tested with the same CNN as the underlying unary classifier. For details of CNN setup, refer to \hyperref[sec:setup]{appendix~\ref{sec:setup}}.
 
-A simpler concept space lead to the change of inference algorithm. In \cite{deng2014large}, inference is performed by MAP loopy belief propagation on the HEX graph, where the local state space of each clique is constrained by semantic restrictions. In this work, due to the tiny concept space of dataset, the inference is performed by calculating the potential function directly for each possible states in the global state space.
+A simpler concept space also lead to the change of inference algorithm. In \cite{deng2014large}, inference is performed by MAP loopy belief propagation on the HEX graph, where the local state space of each clique is constrained by semantic restrictions. In this work, due to the small concept space of dataset, the inference is performed by calculating the potential function directly for each state in the global state space.
 
-Finally, to guarantee that the benefit of the HEX model is consistent regardless of the underlying unary classifier, different variants of the HEX model are also paired with SVM as the underlying unary classifier. An array of 27 SVMs is trained, each corresponding to a node in the HEX graph. The SVM array accepts the output of the last-but-one layer of \cite{krizhevsky2012imagenet} as input, assuming that 4096 neurons provide sufficiently diverse and accurate feature responses without fine-tuning on the PASCAL dataset. The SVM array predicts either distance to decision boundaries (corresponding to raw CNN output), or the probability of each concept being activated (corresponding to CNN output with sigmoid transformation). The training process for the SVM array finished within 8 hours without parallel training. For the detail of SVM setup, refer to \hyperref[sec:setup]{appendix~\ref{sec:setup}}.
+Finally, to guarantee that the benefit of the HEX model is consistent regardless of the underlying unary classifier, different variants of the HEX model are also paired with SVM as the underlying unary classifier. An array of 27 SVMs is trained, each corresponding to a node in the HEX graph. The SVM array accepts the output of the last-but-one layer of \cite{krizhevsky2012imagenet} as input, assuming that 4,096 neurons provide sufficiently diverse and accurate feature responses \emph{without} fine-tuning on the PASCAL dataset. The SVM array predicts either distance to decision boundaries (corresponding to raw CNN output), or the probability of each concept being activated (corresponding to CNN output with sigmoid transformation). For the detail of SVM setup, refer to \hyperref[sec:setup]{appendix~\ref{sec:setup}}.
 
 \subsection{Experiments}
 \label{sec:exp1}
@@ -134,7 +136,7 @@ Softmax & 0.669(0.858) & 0.332(0.716) & 0.007(0.563) & N/A\\
 Logistic & 0.171(0.733) & 0.004(0.625) & 0.000(0.172) & N/A\\
 HEX & 0.657(0.777) & 0.318(0.719) & 0.000(0.477) & N/A
 \end{tabular}
-\caption{Comparison of empirical test result in \cite{deng2014large} (upper) with reimplementation in this work (lower). Performance is reported in accuracy, with top-$k$ accuracy in the bracket. $k$ was set to 5 in the original work, but is lowered to 3 in the reimplementation due to smaller state space. Another consequence of the smaller dataset is that relabelling rate of 95\% is not attempted in this work. Detailed analysis of the reimplemented system is provided in \hyperref[sec:exp2]{section~\ref{sec:exp2}}. Note that while the original HEX model managed to beat the baseline in \cite{deng2014large}, the reimplemented system falls below the baseline.}
+\caption{Comparison of empirical test result in \cite{deng2014large} (upper) with reimplementation in this work (lower). Performance is reported in accuracy, with top-$k$ accuracy in the bracket. $k$ was set to 5 in the original work, but is lowered to 3 in the reimplementation due to smaller state space. Another consequence of the smaller dataset is that relabelling rate of 95\% is not attempted in this work. Detailed performed analysis of the reimplemented system is provided in \hyperref[sec:exp2]{section~\ref{sec:exp2}}. Note that while the original HEX model managed to beat the baseline in \cite{deng2014large}, the reimplemented system falls below the baseline.}
 \end{table}
 
 \begin{table}[htbp]
@@ -150,7 +152,7 @@ dog & $0.7517\pm0.3424$ & $0.4533\pm0.2970$ & $0.0222\pm0.0209$\\
 pet & $0.7971\pm0.3271$ & $0.7828\pm0.3327$ & $0.7832\pm0.3287$\\
 animal & $0.9004\pm0.2301$ & $0.9005\pm0.2290$ & $0.8999\pm0.2322$
 \end{tabular}
-\caption{Under different relabelling rates, with fully trained CNN, the mean and standard deviation of response on validation images labelled ``diningtable'' (upper) and ``dog'' (lower). Note that ``household'' is a hypernym of``furniture'', which is further a hypernym of ``diningtable''; and ``animal'' is a hypernym of ``pet'', which is a further hypernym of ``dog''. With 490 instances in the training set, label ``dog'' is a frequent concept, whereas rare concept ``diningtable'' has 137 instances. Clearly, the unary confidence on abstract concepts are not affected by the relabelling rate, yet the unary response on concrete ones drop to below the decision boundary. This experiment also shows that CNN learns highly abstract concepts accurately, even for concepts without obvious visual clues.}
+\caption{Under different relabelling rates, with fully trained CNN, the mean and standard deviation of sigmoid-transformed response on validation images labelled ``diningtable'' (upper) and ``dog'' (lower). Note that ``household'' is a hypernym of ``furniture'', which is further a hypernym of ``diningtable''; and ``animal'' is a hypernym of ``pet'', which is further a hypernym of ``dog''. With 490 instances in the training set, label ``dog'' is a frequent concept, whereas rare concept ``diningtable'' has 137 instances. Clearly, the unary response on non-bottom-level concepts are not affected by the relabelling rate, yet on bottom-level concepts, the confidence drops to below the decision boundary. This experiment also shows that CNN learns highly abstract concepts accurately, even for concepts without visual clues.}
 \end{table}
 
 \clearpage
@@ -318,9 +320,11 @@ Hence, it is guaranteed that for positive unary inputs, the original HEX labels 
 \section{CNN and SVM Setup}
 \label{sec:setup}
 
-With Caffe \cite{jia2014caffe}, the fine-tuning process finished within five hours on a GeForce GTX 470 graphical card.
+The fine-tuning of the resulting CNN from \cite{krizhevsky2012imagenet} is implemented in Caffe \cite{jia2014caffe}. The final layer of the network is shrunk from 1000 neurons (number of labels in ImageNet) to 27, each corresponding a node in the HEX graph of this work. Since the CNN is fine-tuned as an independent multiclass classifier, a sigmoid layer is appended to the last layer of the CNN; and the loss is calculated as the Euclidean distance between prediction and ground truth.
 
-The SVM is scikit-learn.
+The global learning rate is set to 0.00005, as non-classification layers are assumed well-trained. The global learning rate decreases linearly by 0.00001 every 5,000 iterations; and the training process terminates after 50,000 iterations. A snapshot is taken every 5,000 iterations, allowing 10 models for selection. The learning rate of the classification layer is set to 5 times the global learning rate. With a GeForce GTX 470 graphical card, the fine-tuning process finished within five hours.
+
+The SVM unary classifier is implemented using \texttt{LibSVM} \cite{CC01a}. Attempted kernels are linear, polynomial (degree=3), and RBF. The training process for the SVM array finished within 8 hours without parallel training.
 
 \section{Attributed HEX}
 
