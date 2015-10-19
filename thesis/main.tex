@@ -105,7 +105,7 @@ Another major difference between ImageNet and PASCAL is that the former one is a
 \end{figure}
 \begin{figure}[p]
 \centering
-\includegraphics[scale=1]{full.pdf}
+\includegraphics[scale=1.1]{full.pdf}
 \caption{The PASCAL dataset has 20 concepts, as shown in rectangles. In this work, these concepts are extended by 7 of their hypernyms, creating a forest of three trees with 27 nodes and 24 hierarchical edges. Exclusive edges are not drawn since they can be implied by the hierarchical subgraph. The state space of this HEX graph has size 28. In comparison, the HEX graph in \cite{deng2014large} contains 1000 nodes corresponding to the original concept space, and 820 nodes corresponding to their hypernyms. Note that there is no hierarchical relationship within the original concept space.}
 \label{fig:hex}
 \end{figure}
@@ -140,13 +140,13 @@ Softmax & 0.626(0.843) & 0.564(0.796) & 0.529(0.772) & 0.508(0.760)\\
 Independent & N/A & 0.210(0.452) & 0.093(0.272) & 0.056(0.172)\\
 HEX & N/A & 0.582(0.808) & 0.553(0.794) & 0.524(0.772)\\
 \hline
-Softmax & 0.669(0.858) & 0.332(0.716) & 0.007(0.563) & N/A\\
-Independent & 0.171(0.733) & 0.004(0.625) & 0.000(0.172) & N/A\\
-HEX & 0.657(0.777) & 0.318(0.719) & 0.000(0.477) & N/A\\
+Softmax & 0.669(0.906) & 0.332(0.816) & 0.007(0.738) & N/A\\
+Independent & 0.171(0.863) & 0.004(0.811) & 0.000(0.407) & N/A\\
+HEX & 0.657(0.893) & 0.318(0.869) & 0.000(0.838) & N/A\\
 \hline
-Softmax & 0.673(0.858) & 0.622(0.830) & 0.561(0.790) & N/A\\
-Independent & 0.726(0.888) & 0.673(0.870) & 0.323(0.538) & N/A\\
-HEX & 0.720(0.878) & 0.685(0.857) & 0.502(0.783) & N/A
+Softmax & 0.673(0.906) & 0.622(0.896) & 0.561(0.871) & N/A\\
+Independent & 0.726(0.937) & 0.673(0.930) & 0.323(0.640) & N/A\\
+HEX & 0.720(0.894) & 0.685(0.888) & 0.502(0.872) & N/A
 \end{tabular}
 \caption{Comparison of empirical test result in \cite{deng2014large} (top) with reimplementation (middle: extended concept space; bottom: original concept space). Performance is reported in accuracy, with top-5 accuracy in the bracket. The softmax baseline is obtained by training a CNN that maps an image to exactly one node in the HEX graph, discarding all hierarchical information.}
 \label{tab:original}
@@ -173,7 +173,7 @@ animal & $0.9004\pm0.2301$ & $0.9005\pm0.2290$ & $0.8999\pm0.2322$
 \section{Improvements}
 \subsection{Algorithms}
 
-Based on the original HEX model, this work delivers improvements in three stages. The high-level goal of improvements is stated as follows: With little confidence on bottom-level nodes, the classifier should attempt to classify to an assignment with an active bottom-level concept. However, in case the classifier really cannot make a decision, it should be allowed to predict to a joint assignment in the extended concept space.
+Based on the original HEX model, this work delivers improvements in three stages, where each stage is built on top of the previous one. The high-level goal of improvements is stated as follows: With little confidence on bottom-level nodes, the classifier should attempt to classify to an assignment with an active bottom-level concept. However, in case the classifier really cannot make a decision, it should be allowed to predict to a joint assignment in the extended concept space.
 
 In the first stage, the confidence on inactive nodes are taken into consideration, in addition to active ones. The resulting potential function is shown as follows:
 \begin{equation}
@@ -288,8 +288,44 @@ Original HEX & 0.7209(0.8788) & 0.6852(0.8574) & 0.5029(0.7838)\\
 Stage 1 & 0.7214(0.8622) & 0.6799(0.8337) & 0.5000(0.7850)\\
 Stage 2 & 0.7238(0.7957) & 0.6252(0.7470) & 0.3129(0.5908)
 \end{tabular}
-\caption{extended (upper), original (lower). Performance reported in top1 accuracy (top 3 accuracy, due to smaller state space). Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows. Scheme 6 only apply to the extended concept space.}
+\caption{extended (upper), original (lower). Performance reported in top1 accuracy (top 3 accuracy, due to smaller state space). Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows. Stage 3 only apply to the extended concept space.}
 \label{tab:summary}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{c|c|c|c}
+Node & $w_i$ & Edge & $t_{ij}$\\ \hline
+diningtable & 2.183 & (household, bottle) & 0.984\\ \hline
+chair & 1.321 & (household, pottedplant) & 1.021\\ \hline
+sofa & 2.159 & (household, tvmonitor) & 0.957\\ \hline
+bottle & 0.619 & (household, furniture) & 0.511\\ \hline
+pottedplant & 0.927 & (furniture, diningtable) & 0.969\\ \hline
+tvmonitor & 0.700 & (furniture, chair) & 0.989\\ \hline
+train & 2.100 & (furniture, sofa) & 0.962\\ \hline
+bus & 0.000 & (transport, aeroplane) & 0.893\\ \hline
+car & 1.182 & (transport, boat) & 0.954\\ \hline
+bicycle & 0.000 & (transport, landtransport) & 2.211\\ \hline
+motorbike & 2.193 & (landtransport, train) & 0.885\\ \hline
+aeroplane & 2.135 & (landtransport, bus) & 1.121\\ \hline
+boat & 1.725 & (landtransport, car) & 0.919\\ \hline
+cow & 1.590 & (landtransport, bicycle) & 0.981\\ \hline
+horse & 0.000 & (landtransport, motorbike) & 0.933\\ \hline
+sheep & 0.000 & (animal, person) & 0.913\\ \hline
+dog & 2.000 & (animal, livestock) & 0.516\\ \hline
+cat & 2.075 & (animal, pet) & 1.793\\ \hline
+bird & 2.660 & (livestock, cow) & 0.986\\ \hline
+person & 1.392 & (livestock, horse) & 0.964\\ \hline
+household & 0.785 & (livestock, sheep) & 0.982\\ \hline
+furniture & 1.683 & (pet, dog) & 0.847\\ \hline
+transport & 0.345 & (pet, cat) & 0.888\\ \hline
+landtransport & 2.947 & (pet, bird) & 2.710\\ \hline
+animal & 2.498 & &\\ \hline
+livestock & 0.000 & &\\ \hline
+pet & 3.975 & &
+\end{tabular}
+\caption{50\% relabelling rate, learned weights}
+\label{tab:weight}
 \end{table}
 
 Stage 1: enhanced numerical stability with low confidence???

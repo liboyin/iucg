@@ -54,7 +54,7 @@ def top5_accuracy(Y_predict, Y_truth, lim_states=False):
         return float(np.count_nonzero([np.any(p[:, t]) for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
     if lim_states:
         return float(np.count_nonzero([t in p[:20].argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
-    return float(np.count_nonzero([t in p.argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / en(Y_predict)
+    return float(np.count_nonzero([t in p.argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
 
 
 def confusion_matrix(Y_predict, Y_truth):
@@ -71,7 +71,7 @@ def confusion_matrix(Y_predict, Y_truth):
     return cm.astype(float) / count[:, None]
 
 
-def to_crf(Y, state_space, scheme, top3=False):
+def to_crf(Y, state_space, scheme, top5=False):
     """
     :param Y: N * D numerical array of prediction.
     :param state_space: list of legal binary states.
@@ -81,13 +81,13 @@ def to_crf(Y, state_space, scheme, top3=False):
     assert scheme == 'raw' or scheme == 'pos_neg'
     def raw_step(y):
         scores = map(lambda s: y[s].sum(), state_space)
-        if top3:
-            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-3, 0)))
+        if top5:
+            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-5, 0)))
         return state_space[np.argmax(scores)]
     def pn_step(y):  # requires predictions to be P(y_i=1)
         scores = map(lambda s: y[s].sum() + ((1 - y)[np.logical_not(s)]).sum(), state_space)
-        if top3:
-            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-3, 0)))
+        if top5:
+            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-5, 0)))
         return state_space[np.argmax(scores)]
     step_func = {'raw': raw_step, 'pos_neg': pn_step}
     return np.array(map(step_func[scheme], Y), dtype=bool)
