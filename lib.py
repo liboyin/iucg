@@ -49,18 +49,18 @@ def get_accuracy(Y_predict, Y_truth, lim_states=False):
     return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
-def top3_accuracy(Y_predict, Y_truth, lim_states=False):
+def top5_accuracy(Y_predict, Y_truth, lim_states=False):
     if Y_predict.dtype == bool:
         return float(np.count_nonzero([np.any(p[:, t]) for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
     if lim_states:
-        return float(np.count_nonzero([t in p[:20].argsort()[-3:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
-    return float(np.count_nonzero([t in p.argsort()[-3:] for (p, t) in zip(Y_predict, Y_truth)])) / en(Y_predict)
+        return float(np.count_nonzero([t in p[:20].argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
+    return float(np.count_nonzero([t in p.argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / en(Y_predict)
 
 
 def confusion_matrix(Y_predict, Y_truth):
     cm = np.zeros((20, 27), dtype=int)
     count = np.zeros(20, dtype=int)
-    if Y_predict.dtype = bool:
+    if Y_predict.dtype == bool:
         for i, y in enumerate(Y_predict):
             count[Y_truth[i]] += 1
             cm[Y_truth[i], :] += y

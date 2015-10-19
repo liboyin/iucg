@@ -65,10 +65,10 @@ class LearnableCrf:
         self.update(self.opt_theta)
         return np.array([state_space[x] for x in self.P_norm.argmax(axis=1)], dtype=bool)
 
-    def predict_top3(self, Phi_test):
+    def predict_top5(self, Phi_test):
         self.Phi = Phi_test
         self.N = len(Phi_test)
         self.update(self.opt_theta)
         P_argsort = np.argsort(self.P_norm, axis=1)
-        return np.array([np.vstack(tuple(state_space[P_argsort[i, j]] for j in range(-3, 0)))
+        return np.array([np.vstack(tuple(state_space[P_argsort[i, j]] for j in range(-5, 0)))
                          for i in range(0, self.N)], dtype=bool)

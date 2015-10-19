@@ -122,34 +122,33 @@ Finally, to guarantee that the benefit of the HEX model is consistent regardless
 \subsection{Experiments}
 \label{sec:exp1}
 
-In this work, accuracy is tested both in the extended state space and in the original one, by limiting the legal state space to assignments with an active bottom-level node in the hierarchical subgraph. Note that this is only valid for datasets where all concepts in the original concept space are bottom-level nodes in the HEX graph.
+In this work, accuracy is tested both in the extended state space and in the original one, by limiting the legal state space to assignments with an active bottom-level node in the hierarchical subgraph; or in case of flat classification baseline, to the original concept space. Note that this is only valid for datasets where all concepts in the original concept space are bottom-level nodes in the hierarchical subgraph.
 
-The empirical test result of \cite{deng2014large} and reimplementation are compared in \hyperref[tab:original]{table~\ref{tab:original}}. Note that due to the size of PASCAL dataset, relabelling rate of 95\% is not attempted in this work. Observations on the result are listed as follows:
+The empirical test result of \cite{deng2014large} and reimplementation are compared in \hyperref[tab:original]{table~\ref{tab:original}}. Due to the size of PASCAL dataset, relabelling rate of 95\% is not attempted in this work. Observations on the result are listed as follows:
 \begin{enumerate}
-\item Regardless of implementation and inference algorithm, the accuracy drops as the relabelling rate grows.
-\item With extended state space, independent multiclass classification by itself tend to have the lowest accuracy. However, with the HEX model as a noise filter, classification information can be recovered to a similar level as the softmax baseline.
-\item In \cite{deng2014large}, the original HEX model managed to beat the softmax baseline under all relabelling rates. However, with the reimplemented system and the extended state space, the accuracy of HEX falls below the softmax baseline.
-\item With extended concept space, as the relabelling rate grows, the accuracy of the reimplemented system drops faster than in \cite{deng2014large}. This can be explained by comparing the accuracy of the reimplemented system with extended state space and original state space. For example, under 50\% relabelling rate, the accuracy of logistic baseline is 0.673 if the full state space is used, but is only 0.004 in the extended state space. In other words, the confidence on bottom-level concepts is too low. This confirms the hypothesis in \hyperref[sec:problem]{section~\ref{sec:problem}}. This problem is also explained in \hyperref[tab:response]{table~\ref{tab:response}}.
+\item Regardless of implementation and inference algorithm, the accuracy drops as the relabelling rate grows. This is within expectation.
+\item With the extended state space, independent multiclass classification by itself tend to have the lowest accuracy. However, with the original state space, the accuracy of independent multiclass classification can sometimes beat the softmax baseline. This is a clear sign that nodes corresponding to abstract concepts in the HEX graph receive higher confidence than bottom-level nodes. With the propagation of confidence discussed in \hyperref[sec:observ]{section~\ref{sec:observ}}, the HEX model is able to recover classification information on bottom-level nodes to a similar level as the softmax baseline.
+\item In \cite{deng2014large}, the original HEX model managed to beat the softmax baseline under all relabelling rates (except 0\%, for which the accuracy is not provided). However, with the reimplemented system in the extended state space, the accuracy of HEX falls below the softmax baseline. In addition, as the relabelling rate grows, the accuracy of the reimplemented system drops faster than in \cite{deng2014large}. This is a clear sign of insufficient confidence on bottom-level concepts, as discussed in \hyperref[sec:problem]{section~\ref{sec:problem}}. This problem is also inspected in \hyperref[tab:response]{table~\ref{tab:response}}.
 \end{enumerate}
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{c|c|c|c|c}
+\begin{tabular}{r|c|c|c|c}
  & 0\% & 50\% & 90\% & 95\%\\
 \hline
 Softmax & 0.626(0.843) & 0.564(0.796) & 0.529(0.772) & 0.508(0.760)\\
-Logistic & N/A & 0.210(0.452) & 0.093(0.272) & 0.056(0.172)\\
+Independent & N/A & 0.210(0.452) & 0.093(0.272) & 0.056(0.172)\\
 HEX & N/A & 0.582(0.808) & 0.553(0.794) & 0.524(0.772)\\
 \hline
 Softmax & 0.669(0.858) & 0.332(0.716) & 0.007(0.563) & N/A\\
-Logistic & 0.171(0.733) & 0.004(0.625) & 0.000(0.172) & N/A\\
+Independent & 0.171(0.733) & 0.004(0.625) & 0.000(0.172) & N/A\\
 HEX & 0.657(0.777) & 0.318(0.719) & 0.000(0.477) & N/A\\
 \hline
 Softmax & 0.673(0.858) & 0.622(0.830) & 0.561(0.790) & N/A\\
-Logistic & 0.726(0.888) & 0.673(0.870) & 0.323(0.538) & N/A\\
+Independent & 0.726(0.888) & 0.673(0.870) & 0.323(0.538) & N/A\\
 HEX & 0.720(0.878) & 0.685(0.857) & 0.502(0.783) & N/A
 \end{tabular}
-\caption{Comparison of empirical test result in \cite{deng2014large} (top) with reimplementation (middle: extended concept space; bottom: original concept space). Performance is reported in accuracy, with top-$k$ accuracy in the bracket. $k$ was set to 5 in the original work, but is lowered to 3 in the reimplementation due to smaller state space.}
+\caption{Comparison of empirical test result in \cite{deng2014large} (top) with reimplementation (middle: extended concept space; bottom: original concept space). Performance is reported in accuracy, with top-5 accuracy in the bracket. The softmax baseline is obtained by training a CNN that maps an image to exactly one node in the HEX graph, discarding all hierarchical information.}
 \label{tab:original}
 \end{table}
 
@@ -262,7 +261,7 @@ where the gradient of the partition function in \hyperref[eqn:nablat]{(\ref{eqn:
 &=\sum_{\hat{y}}p_\theta(\hat{y}|x)\cdot\phi_t(x,\hat{y})
 \end{align}
 
-The resulting derivation agrees with the general property that the gradient of CRF potential is the expectation of a feature function. Note that since weights represent the credibility of unary confidence, all-entries of $\theta$ are non-negative.
+The resulting derivation agrees with the general property that the gradient of the log potential of CRF is the expectation of a feature function. Note that since weights represent the credibility of unary confidence, all entries of $\theta$ are non-negative.
 
 \subsection{Experiments}
 \label{sec:exp2}
@@ -289,7 +288,7 @@ Original HEX & 0.7209(0.8788) & 0.6852(0.8574) & 0.5029(0.7838)\\
 Stage 1 & 0.7214(0.8622) & 0.6799(0.8337) & 0.5000(0.7850)\\
 Stage 2 & 0.7238(0.7957) & 0.6252(0.7470) & 0.3129(0.5908)
 \end{tabular}
-\caption{extended (upper), original (lower). Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows. Scheme 6 only apply to the extended concept space.}
+\caption{extended (upper), original (lower). Performance reported in top1 accuracy (top 3 accuracy, due to smaller state space). Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows. Scheme 6 only apply to the extended concept space.}
 \label{tab:summary}
 \end{table}
 
