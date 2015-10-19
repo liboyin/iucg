@@ -49,29 +49,15 @@ def get_accuracy(Y_predict, Y_truth, lim_states=False):
     return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
-def top5_accuracy(Y_predict, Y_truth, lim_states=False):
+def top_k_accuracy(Y_predict, Y_truth, k, lim_states=False):
     if Y_predict.dtype == bool:
         return float(np.count_nonzero([np.any(p[:, t]) for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
     if lim_states:
-        return float(np.count_nonzero([t in p[:20].argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
-    return float(np.count_nonzero([t in p.argsort()[-5:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
+        return float(np.count_nonzero([t in p[:20].argsort()[-k:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
+    return float(np.count_nonzero([t in p.argsort()[-k:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
 
 
-def confusion_matrix(Y_predict, Y_truth):
-    cm = np.zeros((20, 27), dtype=int)
-    count = np.zeros(20, dtype=int)
-    if Y_predict.dtype == bool:
-        for i, y in enumerate(Y_predict):
-            count[Y_truth[i]] += 1
-            cm[Y_truth[i], :] += y
-    else:
-        for i, y in enumerate(Y_predict):
-            count[Y_truth[i]] += 1
-            cm[Y_truth[i], y.argmax()] += 1
-    return cm.astype(float) / count[:, None]
-
-
-def to_crf(Y, state_space, scheme, top5=False):
+def to_crf(Y, state_space, scheme, top_k=1):
     """
     :param Y: N * D numerical array of prediction.
     :param state_space: list of legal binary states.
@@ -81,13 +67,13 @@ def to_crf(Y, state_space, scheme, top5=False):
     assert scheme == 'raw' or scheme == 'pos_neg'
     def raw_step(y):
         scores = map(lambda s: y[s].sum(), state_space)
-        if top5:
-            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-5, 0)))
+        if top_k > 1:
+            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-top_k, 0)))
         return state_space[np.argmax(scores)]
     def pn_step(y):  # requires predictions to be P(y_i=1)
         scores = map(lambda s: y[s].sum() + ((1 - y)[np.logical_not(s)]).sum(), state_space)
-        if top5:
-            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-5, 0)))
+        if top_k > 1:
+            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-top_k, 0)))
         return state_space[np.argmax(scores)]
     step_func = {'raw': raw_step, 'pos_neg': pn_step}
     return np.array(map(step_func[scheme], Y), dtype=bool)
