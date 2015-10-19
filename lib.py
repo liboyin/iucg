@@ -1,4 +1,4 @@
-import h5py
+# import h5py
 import numpy as np
 import re
 from os import listdir
@@ -11,6 +11,7 @@ def read_hdf5(path, hierarchy=False):
     :return: Y_leaf: N ground truth leaf labels. Data type is int.
     :return: Y_hierarchy: N * D array of ground truth hierarchy indicators. Data type is bool.
     """
+    import h5py
     with h5py.File(path, mode='r') as h:
         X = h['X'].value
         Y_leaf = h['Y_leaf'].value.astype(int)
@@ -48,22 +49,45 @@ def get_accuracy(Y_predict, Y_truth, lim_states=False):
     return float(np.count_nonzero(Y_predict.argmax(axis=1) == Y_truth)) / len(Y_predict)
 
 
-def to_crf(Y, state_space, scheme):
+def top3_accuracy(Y_predict, Y_truth, lim_states=False):
+    if Y_predict.dtype == bool:
+        return float(np.count_nonzero([np.any(p[:, t]) for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
+    if lim_states:
+        return float(np.count_nonzero([t in p[:20].argsort()[-3:] for (p, t) in zip(Y_predict, Y_truth)])) / len(Y_predict)
+    return float(np.count_nonzero([t in p.argsort()[-3:] for (p, t) in zip(Y_predict, Y_truth)])) / en(Y_predict)
+
+
+def confusion_matrix(Y_predict, Y_truth):
+    cm = np.zeros((20, 27), dtype=int)
+    count = np.zeros(20, dtype=int)
+    if Y_predict.dtype = bool:
+        for i, y in enumerate(Y_predict):
+            count[Y_truth[i]] += 1
+            cm[Y_truth[i], :] += y
+    else:
+        for i, y in enumerate(Y_predict):
+            count[Y_truth[i]] += 1
+            cm[Y_truth[i], y.argmax()] += 1
+    return cm.astype(float) / count[:, None]
+
+
+def to_crf(Y, state_space, scheme, top3=False):
     """
     :param Y: N * D numerical array of prediction.
     :param state_space: list of legal binary states.
     :param scheme: which CRF to use. Learnable CRF not included.
-    :return: N * D boolean array of prediction. Each prediction is from @self.state_space.
+    :return: N * D boolean array of prediction. Predictions are from @state_space.
     """
-    assert scheme == 'raw' or scheme == 'log' or scheme == 'pos_neg'
+    assert scheme == 'raw' or scheme == 'pos_neg'
     def raw_step(y):
         scores = map(lambda s: y[s].sum(), state_space)
-        return state_space[np.argmax(scores)]
-    def log_step(y):  # requires predictions to be greater than 0
-        scores = map(lambda s: np.log(y[s]).sum(), state_space)
+        if top3:
+            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-3, 0)))
         return state_space[np.argmax(scores)]
     def pn_step(y):  # requires predictions to be P(y_i=1)
         scores = map(lambda s: y[s].sum() + ((1 - y)[np.logical_not(s)]).sum(), state_space)
+        if top3:
+            return np.vstack(tuple(state_space[np.argsort(scores)[i]] for i in range(-3, 0)))
         return state_space[np.argmax(scores)]
-    step_func = {'raw': raw_step, 'log': log_step, 'pos_neg': pn_step}
+    step_func = {'raw': raw_step, 'pos_neg': pn_step}
     return np.array(map(step_func[scheme], Y), dtype=bool)
