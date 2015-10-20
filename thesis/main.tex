@@ -4,6 +4,7 @@
 \usepackage{fullpage}
 \usepackage{graphicx}
 \usepackage[colorlinks=true, linkcolor=blue]{hyperref}
+\usepackage{makecell}
 
 \newcommand{\argmin}{\operatornamewithlimits{arg\,min}}
 \renewcommand{\arraystretch}{1.25} % line spacing in tabular
@@ -83,7 +84,7 @@ Finally, listed below are two less important observations:
 
 Consider the situation illustrated in \hyperref[fig:depth]{figure~\ref{fig:depth}}. Following the same logic as \hyperref[tab:naive]{table~\ref{tab:naive}}, the original HEX model predicts \{animal, pet, dog, Labrador\}. However, this is a result of more active nodes rather than active nodes of higher confidence. Intuitively, \{animal, person\} seems a more reasonable prediction. In addition, the two aforementioned assignments are only separated by 0.1 in log unnormalised potential. It will be desirable if the model can make a prediction that is further from the decision boundary by taking into account the confidence of other nodes, especially those with unary predictions far from the decision boundary.
 
-The second problem is a combined consequence of the realistic labelling assumption and using CNN as the underlying unary classifier. When the relabelling rate is high, most images are relabelled to their immediate parents. This means that for each concept $X$, most instances of $X$ are correctly labelled to all its ancestors, but incorrectly labelled ``NOT $X$''. This create a highly unbalanced and internally inconsistent dataset. In such case, because CNN is trained as an independent multiclass classifier, the unary predictions will highly likely be ``NOT $X$'' for images of $X$. (This hypothesis will be confirmed in \hyperref[sec:exp1]{section~\ref{sec:exp1}}.) The original HEX model does not cope with such situation, as the potential function \hyperref[eqn:naive]{(\ref{eqn:naive})} deactivates a bottom-level node as long as its unary confidence is below the decision boundary.
+The second problem is a combined consequence of the realistic labelling assumption and using an independent classifier as the underlying unary classifier. When the relabelling rate is high, most images are relabelled to their immediate parents. This means that for each concept $X$, most instances of $X$ are correctly labelled to all its ancestors, but incorrectly labelled ``NOT $X$''. This create a highly unbalanced and internally inconsistent dataset. In such case, for images of $X$, the unary predictions will highly likely be ``NOT $X$''. (This hypothesis will be confirmed in \hyperref[sec:exp1]{section~\ref{sec:exp1}}.) This problem is more serious when the training dataset is small \cite{he2009learning}. The original HEX model does not cope with such situation, as the potential function \hyperref[eqn:naive]{(\ref{eqn:naive})} deactivates a bottom-level node as long as its unary confidence is below the decision boundary.
 
 \clearpage
 \section{Reimplementation}
@@ -128,7 +129,7 @@ The empirical test result of \cite{deng2014large} and reimplementation are compa
 \begin{enumerate}
 \item Regardless of implementation and inference algorithm, the accuracy drops as the relabelling rate grows. This is within expectation.
 \item With the extended state space, independent multiclass classification by itself tend to have the lowest accuracy. However, with the original state space, the accuracy of independent multiclass classification can sometimes beat the softmax baseline. This is a clear sign that nodes corresponding to abstract concepts in the HEX graph receive higher confidence than bottom-level nodes. With the propagation of confidence discussed in \hyperref[sec:observ]{section~\ref{sec:observ}}, the HEX model is able to recover classification information on bottom-level nodes to a similar level as the softmax baseline.
-\item In \cite{deng2014large}, the original HEX model managed to beat the softmax baseline under all relabelling rates (except 0\%, for which the accuracy is not provided). However, with the reimplemented system in the extended state space, the accuracy of HEX falls below the softmax baseline. In addition, as the relabelling rate grows, the accuracy of the reimplemented system drops faster than in \cite{deng2014large}. This is a clear sign of insufficient confidence on bottom-level concepts, as discussed in \hyperref[sec:problem]{section~\ref{sec:problem}}. This problem is also inspected in \hyperref[tab:response]{table~\ref{tab:response}}.
+\item In \cite{deng2014large}, the original HEX model managed to beat the softmax baseline under all relabelling rates (except 0\%, for which the accuracy is not provided). However, with the reimplemented system in the extended state space, the accuracy of HEX falls below the softmax baseline. In addition, as the relabelling rate grows, the accuracy of the reimplemented system drops faster than in \cite{deng2014large}. This is a clear sign of insufficient confidence on bottom-level concepts, as discussed in \hyperref[sec:problem]{section~\ref{sec:problem}}. This problem is also inspected in \hyperref[tab:resp]{table~\ref{tab:resp}}.
 \end{enumerate}
 
 \begin{table}[htbp]
@@ -166,7 +167,7 @@ pet         & $0.7971\pm0.3271$ & $0.7828\pm0.3327$ & $0.7832\pm0.3287$\\
 animal      & $0.9004\pm0.2301$ & $0.9005\pm0.2290$ & $0.8999\pm0.2322$
 \end{tabular}
 \caption{Under different relabelling rates, with fully trained CNN, the mean and standard deviation of sigmoid-transformed response on validation images labelled ``diningtable'' (upper) and ``dog'' (lower). Note that ``household'' is a hypernym of ``furniture'', which is further a hypernym of ``diningtable''; and ``animal'' is a hypernym of ``pet'', which is further a hypernym of ``dog''. With 490 instances in the training set, label ``dog'' is a frequent concept, whereas rare concept ``diningtable'' has 137 instances. Clearly, the unary response on non-bottom-level concepts are not affected by the relabelling rate, yet on bottom-level concepts, the confidence drops to below the decision boundary.  This experiment also shows that CNN learns highly abstract concepts (such as ``household'') accurately, even for concepts without visual clues.}
-\label{tab:response}
+\label{tab:resp}
 \end{table}
 
 \clearpage
@@ -178,24 +179,25 @@ Based on the original HEX model, this work delivers improvements in three stages
 In the first stage, the confidence on inactive nodes are taken into consideration, in addition to active ones. The resulting potential function is shown as follows:
 \begin{equation}
 \tilde{p}(y|x)=\prod_{i\in V}\exp\{f_i(x;w)I[y_i=1]+(1-f_i(x;w))I[y_i=0]\}I[y\text{ legal}]
-\label{eqn:pn}
+\label{eqn:pn1}
 \end{equation}
 
 where $f_i(x;w)$ denotes the confidence of node $i$ being true, and $1-f_i(x;w)$ for being false. This requires the range of unary prediction to be within $[0,1]$, and the decision boundary to be 0.5. To achieve this, unary predictions from the underlying CNN is normalised with the sigmoid function.
 
-Theoretically, stage 1 fix should benefit in two aspects: First, the potential function considers the same number of nodes for every legal assignment, therefore fixing the unnormalised depth problem discussed in \hyperref[sec:problem]{section~\ref{sec:problem}}. Second, the potential function is able to refer to the confidence of inactive nodes, hence benefiting from those that are far from the decision boundary. However, a massage on \hyperref[eqn:pn]{(\ref{eqn:pn})} shows that it is not far from the original potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}:
+Theoretically, stage 1 fix should benefit in two aspects: First, the potential function considers the same number of nodes for every legal assignment, therefore fixing the unnormalised depth problem discussed in \hyperref[sec:problem]{section~\ref{sec:problem}}. Second, the potential function is able to refer to the confidence of inactive nodes, hence benefiting from those that are far from the decision boundary. However, a massage on \hyperref[eqn:pn1]{(\ref{eqn:pn1})} shows that it is not far from the original potential function \hyperref[eqn:naive]{(\ref{eqn:naive})}:
 \begin{align}
 \tilde{p}(y|x)&=\prod_{i\in V}\exp\{f_i(x;w)I[y_i=1]+(1-f_i(x;w))(1-I[y_i=1])\}I[y\text{ legal}]\nonumber\\
 &=\prod_{i\in V}\exp\{(2f_i(x;w)-1)I[y_i=1]+(1-f_i(x;w))\}I[y\text{ legal}]\nonumber\\
 &=\tilde{p}(\varnothing|x)\prod_{i\in V}\exp\{(2f_i(x;w)-1)I[y_i=1]\}I[y\text{ legal}]
 \end{align}
 
-where $\tilde{p}(\varnothing|x)$ denotes the unnormalised potential of assignment $\varnothing$. Since $\tilde{p}(\varnothing|x)$ only depends on $x$, it can be absorbed into $\frac{1}{Z(x)}$. Also, the transformation on $\exp\{(2f_i(x;w)-1)I[y_i=1]\}$ does not affect the rank of $\tilde{p}(y|x)$ for all $y$. Therefore, the difference between \hyperref[eqn:naive]{(\ref{eqn:naive})} and \hyperref[eqn:pn]{(\ref{eqn:pn})} is no more than the sigmoid transformation.
+where $\tilde{p}(\varnothing|x)$ denotes the unnormalised potential of assignment $\varnothing$. Since $\tilde{p}(\varnothing|x)$ only depends on $x$, it can be absorbed into $\frac{1}{Z(x)}$. Also, the transformation on $\exp\{(2f_i(x;w)-1)I[y_i=1]\}$ does not affect the rank of $\tilde{p}(y|x)$ for all $y$. Therefore, the difference between \hyperref[eqn:naive]{(\ref{eqn:naive})} and \hyperref[eqn:pn1]{(\ref{eqn:pn1})} is no more than the sigmoid transformation.
 
 In the second stage, pairwise term is added to the potential function. This can be seen as a remedy to the low confidence on bottom-level nodes when the relabelling rate is high, as the confidence on the immediate parents of bottom-level nodes are not affected. In addition, two regularisation terms are added to the potential function so that the contributions from unary terms and pairwise terms are balanced. The resulting potential function is shown as follows:
 \begin{align}
 p(y|x)=\frac{1}{Z(x)}&\exp\left\{\frac{1}{|V|}\sum_{i\in V}x_i\cdot I[y_i=1]+(1-x_i)\cdot I[y_i=0]\right\}\nonumber\\
 \cdot&\exp\left\{\frac{1}{|E_h|}\sum_{(i,j)\in E_h}x_ix_j\cdot I[y_i=y_j=1]\right\}\cdot I[y\text{ legal}]
+\label{eqn:pn2}
 \end{align}
 
 In the third stage, a weighting factor is multiplied to each unary and pairwise term. This weighting factor is learned form all images labelled to bottom-level nodes in the dataset. Note that such training scheme cannot cover concepts from the original label space that are not bottom-level nodes in the HEX graph, as it is not possible to distinguish between images that are correctly labelled to that concept, or images that are relabelled to its immediate parents. The resulting potential function is shown as follows:
@@ -265,17 +267,21 @@ The resulting derivation agrees with the general property that the gradient of t
 
 \subsection{Experiments}
 \label{sec:exp2}
-% add svm
-% add breakdown
 
-The summary of accuracy is shown in \hyperref[tab:summary]{table~\ref{tab:summary}}.
+The overall performance of different variants of the HEX model is compared in \hyperref[tab:cnnacc]{table~\ref{tab:cnnacc}}. Under different relabelling rates, accuracy broken down to labels are compared in \hyperref[tab:cnn0acc]{table~\ref{tab:cnn0acc}} - \hyperref[tab:cnn90acc]{table~\ref{tab:cnn90acc}}. The response of CNN on validation images (a complete version of \hyperref[tab:resp]{table~\ref{tab:resp}}) is shown in \hyperref[tab:cnnresp]{table~\ref{tab:cnnresp}}. Observations on the results are listed as follows:
+\begin{enumerate}
+\item As discussed under \hyperref[eqn:pn2]{(\ref{eqn:pn2})}, stage 1 improvement has no effect on accuracy, except in the limited concept space, under 90\% relabelling rate. This could be because the sigmoid function diminishes the difference between responses when they are all very low. Note that such enhancement of numerical stability does not affect top-1 result, as the sigmoid function does not change the ranking of $p(y|x)$ for all $y$.
+\item Stage 2 improvement brings a significant accuracy enhancement starting from 0\% relabelling rate. In addition, such improvement is consistent over all labels. This is a clear sign that the original relationships are too weak. Hence, a promising direction of further improvement is to incorporate more relationships.
+\item Stage 3: It has been noticed that some weights are set to zero by optimisation. CRF is particularly useful for small training dataset, where confidence on bottom-level nodes are low.
+\item Similar trend is also observed with SVM as the underlying unary classifier. For experimental results, refer to \hyperref[sec:svm]{appendix~\ref{sec:svm}}.
+\end{enumerate}
 
 \begin{table}[htbp]
 \centering
 \begin{tabular}{r|c|c|c}
  & 0\% & 50\% & 90\%\\
 \hline
-Softmax & 0.6698(0.8580) & 0.3325(0.7161) & 0.0071(0.5635)\\
+Softmax & 0.6698(0.8580) & 0.3325(0.7161) & 0.0112(0.5635)\\
 Independent & 0.1716(0.7339) & 0.0047(0.6258) & 0.0000(0.1728)\\
 Original HEX & 0.6573(0.7779) & 0.3182(0.7193) & 0.0000(0.4774)\\
 Stage 1 & 0.6579(0.7790) & 0.3182(0.7197) & 0.0000(0.5154)\\
@@ -288,14 +294,50 @@ Original HEX & 0.7209(0.8788) & 0.6852(0.8574) & 0.5029(0.7838)\\
 Stage 1 & 0.7214(0.8622) & 0.6799(0.8337) & 0.5000(0.7850)\\
 Stage 2 & 0.7238(0.7957) & 0.6252(0.7470) & 0.3129(0.5908)
 \end{tabular}
-\caption{extended (upper), original (lower). Performance reported in top1 accuracy (top 3 accuracy, due to smaller state space). Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows. Stage 3 only apply to the extended concept space.}
-\label{tab:summary}
+\caption{extended (upper), original (lower). Performance reported in top1 accuracy (top 3 accuracy, due to smaller state space). Note that top-5 accuracy is reported in \hyperref[tab:original]{table~\ref{tab:original}} in respect of the experimental protocol in \cite{deng2014large}. Down to 3 here due to the state space size. Signs of overtrainning of CRF on the training set, but the benefit soon takes over as relabelling rate grows. Stage 3 only apply to the extended concept space.}
+\label{tab:cnnacc}
 \end{table}
 
 \begin{table}[htbp]
 \centering
 \begin{tabular}{r|c|c|c|c|c|c}
-Concept & Softmax & Original & Stage 2 & Stage 3 & 2-Original & 3-2\\\hline
+Concept & Softmax & Original & Stage 2 & Stage 3 & \makecell{Stage 2$-$\\Original} & \makecell{Stage 3$-$\\Stage 2}\\\hline
+diningtable   & 0.4821 & 0.5357 & 0.5535 & 0.5535 & 0.0178 & 0.0000\\
+chair         & 0.4666 & 0.3111 & 0.3777 & 0.3555 & 0.0666 & -0.0222\\
+sofa          & 0.4310 & 0.3275 & 0.3793 & 0.3620 & 0.0518 & -0.0173\\
+bottle        & 0.6000 & 0.5666 & 0.6333 & 0.5333 & 0.0667 & -0.1000\\
+pottedplant   & 0.3928 & 0.3928 & 0.4642 & 0.4642 & 0.0714 & 0.0000\\
+tvmonitor     & 0.8500 & 0.6250 & 0.6250 & 0.5500 & 0.0000 & -0.075\\
+train         & 0.8166 & 0.8666 & 0.8916 & 0.8750 & 0.0250 & -0.0166\\
+bus           & 0.6764 & 0.6764 & 0.7058 & 0.7647 & 0.0294 & 0.0589\\
+car           & 0.8281 & 0.7343 & 0.7656 & 0.7500 & 0.0313 & -0.0156\\
+bicycle       & 0.8148 & 0.8148 & 0.8148 & 0.7962 & 0.0000 & -0.0186\\
+motorbike     & 0.8035 & 0.6785 & 0.7142 & 0.6964 & 0.0357 & -0.0178\\
+aeroplane     & 0.8137 & 0.7724 & 0.8000 & 0.7931 & 0.0276 & -0.0069\\
+boat          & 0.6301 & 0.6986 & 0.6986 & 0.6986 & 0.0000 & 0.0000\\
+cow           & 0.3269 & 0.3846 & 0.4615 & 0.4423 & 0.0769 & -0.0192\\
+horse         & 0.4057 & 0.3768 & 0.4492 & 0.5072 & 0.0724 & 0.0580\\
+sheep         & 0.3529 & 0.3529 & 0.4411 & 0.5588 & 0.0882 & 0.1177\\
+dog           & 0.7272 & 0.7954 & 0.8181 & 0.8068 & 0.0227 & -0.0113\\
+cat           & 0.5793 & 0.5655 & 0.6000 & 0.5862 & 0.0345 & -0.0138\\
+bird          & 0.6886 & 0.7169 & 0.8018 & 0.7924 & 0.0849 & -0.0094\\
+person        & 0.7313 & 0.7213 & 0.7412 & 0.7363 & 0.0199 & -0.0049\\\hline
+household     & N/A    & 0.7859 & 0.7859 & 0.7548 & 0.0000 & -0.0311\\
+furniture     & N/A    & 0.6477 & 0.6666 & 0.6603 & 0.0189 & -0.0063\\
+transport     & N/A    & 0.9565 & 0.9565 & 0.9658 & 0.0000 & 0.0093\\
+landtransport & N/A    & 0.9413 & 0.9483 & 0.9483 & 0.0070 & 0.0000\\
+animal        & N/A    & 0.8888 & 0.8876 & 0.8863 & -0.0012 & -0.0013\\
+livestock     & N/A    & 0.5741 & 0.6000 & 0.6000 & 0.0259 & 0.0000\\
+pet           & N/A    & 0.8594 & 0.8758 & 0.8735 & 0.0164 & -0.0023
+\end{tabular}
+\caption{CNN, extended state space, 0\% relabelling rate}
+\label{tab:cnn0acc}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{r|c|c|c|c|c|c}
+Concept & Softmax & Original & Stage 2 & Stage 3 & \makecell{Stage 2$-$\\Original} & \makecell{Stage 3$-$\\Stage 2}\\\hline
 diningtable   & 0.2321 & 0.3571 & 0.4821 & 0.4642 & 0.1250 & -0.0179\\
 chair         & 0.0888 & 0.0666 & 0.1333 & 0.1111 & 0.0667 & -0.0222\\
 sofa          & 0.1206 & 0.0689 & 0.2068 & 0.1379 & 0.1379 & -0.0689\\
@@ -322,124 +364,88 @@ transport     & N/A    & 0.9534 & 0.9565 & 0.9549 & 0.0031 & -0.0016\\
 landtransport & N/A    & 0.9201 & 0.9413 & 0.9389 & 0.0212 & -0.0024\\
 animal        & N/A    & 0.8825 & 0.8786 & 0.8735 & -0.0039 & -0.0051\\
 livestock     & N/A    & 0.5419 & 0.6129 & 0.6967 & 0.071 & 0.0838\\
-pet           & N/A    & 0.8337 & 0.8548 & 0.8548 & 0.0211 & 0.0000\\
+pet           & N/A    & 0.8337 & 0.8548 & 0.8548 & 0.0211 & 0.0000
 \end{tabular}
-\caption{Extended state space, 50\% relabelling rate}
-\label{tab:50accuracy}
+\caption{CNN, extended state space, 50\% relabelling rate}
+\label{tab:cnn50acc}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{c|c|c|c}
-Node & $w_i$ & Edge & $t_{ij}$\\\hline
-diningtable   & 2.1692 & (household, bottle)        & 0.9686\\
-chair         & 1.4113 & (household, pottedplant)   & 1.0023\\
-sofa          & 2.1080 & (household, tvmonitor)     & 0.9444\\
-bottle        & 0.6178 & (household, furniture)     & 0.4723\\
-pottedplant   & 0.8744 & (furniture, diningtable)   & 0.9642\\
-tvmonitor     & 0.4812 & (furniture, chair)         & 0.9579\\
-train         & 2.0026 & (furniture, sofa)          & 0.9367\\
-bus           & 0.0000 & (transport, aeroplane)     & 0.8654\\
-car           & 1.0358 & (transport, boat)          & 0.9185\\
-bicycle       & 0.0000 & (transport, landtransport) & 2.2961\\
-motorbike     & 2.1447 & (landtransport, train)     & 0.8297\\
-aeroplane     & 2.0975 & (landtransport, bus)       & 1.0487\\
-boat          & 1.5493 & (landtransport, car)       & 0.8752\\
-cow           & 1.5618 & (landtransport, bicycle)   & 0.9760\\
-horse         & 0.0000 & (landtransport, motorbike) & 0.9074\\
-sheep         & 0.0000 & (animal, person)           & 0.8808\\
-dog           & 1.8704 & (animal, livestock)        & 0.5204\\
-cat           & 1.9724 & (animal, pet)              & 1.8062\\
-bird          & 3.7825 & (livestock, cow)           & 0.9623\\
-person        & 1.3138 & (livestock, horse)         & 0.9450\\
-household     & 0.6735 & (livestock, sheep)         & 0.9741\\
-furniture     & 1.7698 & (pet, dog)                 & 0.7774\\
-transport     & 0.1756 & (pet, cat)                 & 0.8273\\
-landtransport & 2.9717 & (pet, bird)                & 3.2935\\
-animal        & 2.6498 & &\\
-livestock     & 0.0000 & &\\
-pet           & 4.0644 & &
+\begin{tabular}{r|c|c|c|c|c|c}
+Concept & Softmax & Original & Stage 2 & Stage 3 & \makecell{Stage 2$-$\\Original} & \makecell{Stage 3$-$\\Stage 2}\\\hline
+diningtable   & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+chair         & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+sofa          & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+bottle        & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+pottedplant   & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+tvmonitor     & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+train         & 0.0083 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+bus           & 0.0147 & 0.0000 & 0.0000 & 0.8382 & 0.0000 & 0.8382\\
+car           & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+bicycle       & 0.0000 & 0.0000 & 0.0000 & 0.8148 & 0.0000 & 0.8148\\
+motorbike     & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+aeroplane     & 0.0137 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+boat          & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+cow           & 0.0192 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+horse         & 0.0144 & 0.0000 & 0.0000 & 0.6521 & 0.0000 & 0.6521\\
+sheep         & 0.0000 & 0.0000 & 0.0000 & 0.2352 & 0.0000 & 0.2352\\
+dog           & 0.0397 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+cat           & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
+bird          & 0.0188 & 0.0000 & 0.0094 & 0.8584 & 0.0094 & 0.849\\
+person        & 0.0199 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000\\\hline
+household     & N/A    & 0.8093 & 0.7548 & 0.7548 & -0.0545 & 0.0000\\
+furniture     & N/A    & 0.6981 & 0.7044 & 0.6666 & 0.0063 & -0.0378\\
+transport     & N/A    & 0.9580 & 0.9534 & 0.9534 & -0.0046 & 0.0000\\
+landtransport & N/A    & 0.9413 & 0.9342 & 0.9319 & -0.0071 & -0.0023\\
+animal        & N/A    & 0.8403 & 0.8799 & 0.8748 & 0.0396 & -0.0051\\
+livestock     & N/A    & 0.6064 & 0.6451 & 0.7096 & 0.0387 & 0.0645\\
+pet           & N/A    & 0.8337 & 0.8665 & 0.8711 & 0.0328 & 0.0046
 \end{tabular}
-\caption{0\% relabelling rate, learned weights}
-\label{tab:0weight}
+\caption{CNN, extended state space, 90\% relabelling rate}
+\label{tab:cnn90acc}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{c|c|c|c}
-Node & $w_i$ & Edge & $t_{ij}$\\\hline
-diningtable   & 2.1832 & (household, bottle)        & 0.9846\\
-chair         & 1.3210 & (household, pottedplant)   & 1.0215\\
-sofa          & 2.1596 & (household, tvmonitor)     & 0.9575\\
-bottle        & 0.6195 & (household, furniture)     & 0.5110\\
-pottedplant   & 0.9273 & (furniture, diningtable)   & 0.9699\\
-tvmonitor     & 0.7008 & (furniture, chair)         & 0.9891\\
-train         & 2.1006 & (furniture, sofa)          & 0.9622\\
-bus           & 0.0000 & (transport, aeroplane)     & 0.8935\\
-car           & 1.1823 & (transport, boat)          & 0.9540\\
-bicycle       & 0.0000 & (transport, landtransport) & 2.2119\\
-motorbike     & 2.1935 & (landtransport, train)     & 0.8858\\
-aeroplane     & 2.1355 & (landtransport, bus)       & 1.1213\\
-boat          & 1.7257 & (landtransport, car)       & 0.9193\\
-cow           & 1.5908 & (landtransport, bicycle)   & 0.9812\\
-horse         & 0.0000 & (landtransport, motorbike) & 0.9335\\
-sheep         & 0.0000 & (animal, person)           & 0.9133\\
-dog           & 2.0003 & (animal, livestock)        & 0.5164\\
-cat           & 2.0752 & (animal, pet)              & 1.7930\\
-bird          & 2.6603 & (livestock, cow)           & 0.9867\\
-person        & 1.3928 & (livestock, horse)         & 0.9645\\
-household     & 0.7853 & (livestock, sheep)         & 0.9828\\
-furniture     & 1.6832 & (pet, dog)                 & 0.8477\\
-transport     & 0.3454 & (pet, cat)                 & 0.8884\\
-landtransport & 2.9475 & (pet, bird)                & 2.7109\\
-animal        & 2.4981 & &\\
-livestock     & 0.0000 & &\\
-pet           & 3.9751 & &
+\begin{tabular}{r|c|c|c}
+Concept & 0\% & 50\% & 90\%\\\hline
+diningtable   & $0.4285\pm0.3011$ & $0.2490\pm0.2288$ & $0.0108\pm0.0116$\\
+chair         & $0.4238\pm0.3035$ & $0.1375\pm0.1221$ & $0.0068\pm0.0052$\\
+sofa          & $0.4466\pm0.3345$ & $0.2191\pm0.2027$ & $0.0083\pm0.0065$\\
+bottle        & $0.6116\pm0.3785$ & $0.3013\pm0.3196$ & $0.0097\pm0.0076$\\
+pottedplant   & $0.4008\pm0.3749$ & $0.1218\pm0.1016$ & $0.0061\pm0.0061$\\
+tvmonitor     & $0.7321\pm0.3329$ & $0.4790\pm0.3238$ & $0.0304\pm0.0246$\\
+train         & $0.8513\pm0.2687$ & $0.5044\pm0.2880$ & $0.0046\pm0.0044$\\
+bus           & $0.8517\pm0.2642$ & $0.5511\pm0.2253$ & $0.0094\pm0.0083$\\
+car           & $0.7582\pm0.3518$ & $0.3866\pm0.2717$ & $0.0109\pm0.0105$\\
+bicycle       & $0.6957\pm0.3544$ & $0.3214\pm0.2975$ & $0.0146\pm0.0130$\\
+motorbike     & $0.7285\pm0.3231$ & $0.3698\pm0.2470$ & $0.0075\pm0.0050$\\
+aeroplane     & $0.7812\pm0.3220$ & $0.4535\pm0.2675$ & $0.0062\pm0.0082$\\
+boat          & $0.7689\pm0.3253$ & $0.3321\pm0.2862$ & $0.0072\pm0.0067$\\
+cow           & $0.4174\pm0.2945$ & $0.0924\pm0.0833$ & $0.0047\pm0.0053$\\
+horse         & $0.4890\pm0.3544$ & $0.2449\pm0.2319$ & $0.0055\pm0.0042$\\
+sheep         & $0.4635\pm0.3312$ & $0.2753\pm0.2502$ & $0.0042\pm0.0035$\\
+dog           & $0.7517\pm0.3424$ & $0.4533\pm0.2970$ & $0.0222\pm0.0209$\\
+cat           & $0.6678\pm0.3688$ & $0.3223\pm0.2397$ & $0.0306\pm0.0416$\\
+bird          & $0.7499\pm0.3318$ & $0.4043\pm0.2510$ & $0.0619\pm0.1114$\\
+person        & $0.7056\pm0.3563$ & $0.4345\pm0.2914$ & $0.0312\pm0.0243$\\\hline
+household     & $0.7943\pm0.3041$ & $0.7989\pm0.2895$ & $0.7975\pm0.2963$\\
+furniture     & $0.6460\pm0.3546$ & $0.6762\pm0.3321$ & $0.6709\pm0.3380$\\
+transport     & $0.9402\pm0.1713$ & $0.9277\pm0.1879$ & $0.9324\pm0.1844$\\
+landtransport & $0.9274\pm0.1925$ & $0.9169\pm0.1946$ & $0.9185\pm0.2047$\\
+animal        & $0.8442\pm0.2787$ & $0.8448\pm0.2804$ & $0.8467\pm0.2775$\\
+livestock     & $0.6514\pm0.3555$ & $0.6260\pm0.3626$ & $0.6530\pm0.3550$\\
+pet           & $0.8157\pm0.3015$ & $0.8047\pm0.3065$ & $0.8056\pm0.3067$
 \end{tabular}
-\caption{50\% relabelling rate, learned weights}
-\label{tab:50weight}
+\caption{CNN responses}
+\label{tab:cnnresp}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{c|c|c|c}
-Node & $w_i$ & Edge & $t_{ij}$\\\hline
-diningtable   & 2.2378 & (household, bottle)        & 0.9974\\
-chair         & 1.2302 & (household, pottedplant)   & 1.0097\\
-sofa          & 2.2351 & (household, tvmonitor)     & 0.9947\\
-bottle        & 0.9062 & (household, furniture)     & 0.5250\\
-pottedplant   & 0.8470 & (furniture, diningtable)   & 0.9981\\
-tvmonitor     & 0.5482 & (furniture, chair)         & 1.0003\\
-train         & 2.2922 & (furniture, sofa)          & 0.9981\\
-bus           & 0.0000 & (transport, aeroplane)     & 0.9963\\
-car           & 1.2010 & (transport, boat)          & 0.9972\\
-bicycle       & 0.0000 & (transport, landtransport) & 2.4417\\
-motorbike     & 2.2931 & (landtransport, train)     & 0.9977\\
-aeroplane     & 2.3083 & (landtransport, bus)       & 1.0210\\
-boat          & 1.7288 & (landtransport, car)       & 1.0055\\
-cow           & 1.5191 & (landtransport, bicycle)   & 1.0009\\
-horse         & 0.0000 & (landtransport, motorbike) & 0.9972\\
-sheep         & 0.0000 & (animal, person)           & 0.9949\\
-dog           & 2.2625 & (animal, livestock)        & 0.5153\\
-cat           & 2.2553 & (animal, pet)              & 1.9839\\
-bird          & 0.0000 & (livestock, cow)           & 0.9993\\
-person        & 1.6450 & (livestock, horse)         & 0.9993\\
-household     & 0.8827 & (livestock, sheep)         & 0.9997\\
-furniture     & 1.8698 & (pet, dog)                 & 0.9897\\
-transport     & 0.9849 & (pet, cat)                 & 0.9816\\
-landtransport & 3.3086 & (pet, bird)                & 1.3539\\
-animal        & 3.0661 & &\\
-livestock     & 0.0000 & &\\
-pet           & 4.0960 & &
-\end{tabular}
-\caption{90\% relabelling rate, learned weights}
-\label{tab:90weight}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{c|c|c|c|c}
-Node & 0\% & 50\% & 90\% & 90\%-0\%\\\hline
+\begin{tabular}{r|c|c|c|c}
+Node & 0\% & 50\% & 90\% & 90\%$-$0\%\\\hline
 diningtable   & 2.1692 & 2.1832 & 2.2378 & 0.0686\\
 chair         & 1.4113 & 1.3210 & 1.2302 & -0.1811\\
 sofa          & 2.1080 & 2.1596 & 2.2351 & 0.1271\\
@@ -468,14 +474,14 @@ animal        & 2.6498 & 2.4981 & 3.0661 & 0.4163\\
 livestock     & 0.0000 & 0.0000 & 0.0000 & 0.0000\\
 pet           & 4.0644 & 3.9751 & 4.0960 & 0.0316
 \end{tabular}
-\caption{Learned unary weights}
+\caption{CNN, learned unary weights}
 \label{tab:unary}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{c|c|c|c|c}
-Edge & 0\% & 50\% & 90\% & 90\%-0\%\\\hline
+\begin{tabular}{r|c|c|c|c}
+Edge & 0\% & 50\% & 90\% & 90\%$-$0\%\\\hline
 (household, bottle)        & 0.9686 & 0.9846 & 0.9974 & 0.0288\\
 (household, pottedplant)   & 1.0023 & 1.0215 & 1.0097 & 0.0074\\
 (household, tvmonitor)     & 0.9444 & 0.9575 & 0.9947 & 0.0503\\
@@ -501,15 +507,9 @@ Edge & 0\% & 50\% & 90\% & 90\%-0\%\\\hline
 (pet, cat)                 & 0.8273 & 0.8884 & 0.9816 & 0.1543\\
 (pet, bird)                & 3.2935 & 2.7109 & 1.3539 & -1.9396
 \end{tabular}
-\caption{Learned pairwise weights}
+\caption{CNN, learned pairwise weights}
 \label{tab:pairwise}
 \end{table}
-
-Stage 1: enhanced numerical stability with low confidence???
-
-State 2: Original relationships are weak. A promising direction is to emphasize on more relationships
-
-Stage 3: It has been noticed that some weights are set to zero by optimisation. CRF is particularly useful for small training dataset, where confidence on bottom-level nodes are low.
 
 \clearpage
 \section{Discussions}
@@ -546,6 +546,45 @@ The fine-tuning of the CNN from \cite{krizhevsky2012imagenet} is implemented usi
 The global learning rate is set to $5\times10^{-5}$. This is significantly lower than in \cite{krizhevsky2012imagenet}, as all layers except the last are assumed well-trained. The global learning rate decreases linearly by $10^{-5}$ every 5,000 iterations; and the training process terminates after 50,000 iterations. The learning rate of the last layer is set to 5 times the global learning rate. A snapshot is taken every 5,000 iterations, allowing 10 models for selection. With a GeForce GTX 470 graphical card, the fine-tuning process finished within five hours.
 
 The SVM unary classifier is implemented using \texttt{LibSVM} \cite{libsvm}. Attempted kernels are linear, polynomial (degree=3), and RBF. The training process for the SVM array finished within 8 hours without parallel training.
+
+\section{Experiments with SVM as Underlying Unary Classifier}
+\label{sec:svm}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{r|c|c|c}
+Concept & 0\% & 50\% & 90\%\\\hline
+diningtable   & $0.4382\pm0.3533$ & $0.1882\pm0.2737$ & $0.0031\pm0.0021$\\
+chair         & $0.2064\pm0.2434$ & $0.0427\pm0.0435$ & $0.0219\pm0.0709$\\
+sofa          & $0.3278\pm0.3343$ & $0.0812\pm0.1197$ & $0.0110\pm0.0124$\\
+bottle        & $0.5325\pm0.4374$ & $0.1318\pm0.2474$ & $0.0037\pm0.0061$\\
+pottedplant   & $0.3358\pm0.3925$ & $0.1449\pm0.2993$ & $0.0494\pm0.1952$\\
+tvmonitor     & $0.5403\pm0.4268$ & $0.2600\pm0.3769$ & $0.0067\pm0.0122$\\
+train         & $0.7405\pm0.3910$ & $0.2677\pm0.2944$ & $0.0370\pm0.1082$\\
+bus           & $0.8364\pm0.2976$ & $0.2885\pm0.3079$ & $0.0103\pm0.0206$\\
+car           & $0.6527\pm0.4046$ & $0.1962\pm0.2330$ & $0.0126\pm0.0216$\\
+bicycle       & $0.5760\pm0.4317$ & $0.2055\pm0.3038$ & $0.0065\pm0.0105$\\
+motorbike     & $0.5760\pm0.3940$ & $0.2158\pm0.2863$ & $0.0150\pm0.0731$\\
+aeroplane     & $0.7647\pm0.3625$ & $0.2556\pm0.2622$ & $0.0200\pm0.0861$\\
+boat          & $0.7487\pm0.3681$ & $0.2541\pm0.3198$ & $0.0417\pm0.1208$\\
+cow           & $0.3544\pm0.3682$ & $0.1329\pm0.2292$ & $0.0029\pm0.0032$\\
+horse         & $0.3981\pm0.3667$ & $0.1101\pm0.1717$ & $0.0071\pm0.0286$\\
+sheep         & $0.4847\pm0.3658$ & $0.1827\pm0.2310$ & $0.0133\pm0.0330$\\
+dog           & $0.6145\pm0.3851$ & $0.2749\pm0.2849$ & $0.0250\pm0.0593$\\
+cat           & $0.6753\pm0.3726$ & $0.2364\pm0.2413$ & $0.0299\pm0.0637$\\
+bird          & $0.7580\pm0.3336$ & $0.2909\pm0.3071$ & $0.0545\pm0.1661$\\
+person        & $0.6078\pm0.3654$ & $0.2688\pm0.2723$ & $0.0212\pm0.0463$\\\hline
+household     & $0.7512\pm0.3085$ & $0.7507\pm0.3085$ & $0.7478\pm0.3093$\\
+furniture     & $0.5977\pm0.3661$ & $0.6014\pm0.3664$ & $0.5970\pm0.3665$\\
+transport     & $0.8845\pm0.2271$ & $0.8835\pm0.2276$ & $0.8841\pm0.2269$\\
+landtransport & $0.8305\pm0.2869$ & $0.8303\pm0.2864$ & $0.8317\pm0.2861$\\
+animal        & $0.8504\pm0.2299$ & $0.8505\pm0.2297$ & $0.8487\pm0.2300$\\
+livestock     & $0.6314\pm0.3697$ & $0.6362\pm0.3707$ & $0.6339\pm0.3712$\\
+pet           & $0.7954\pm0.2842$ & $0.7954\pm0.2835$ & $0.7957\pm0.2837$
+\end{tabular}
+\caption{SVM responses}
+\label{tab:svmresp}
+\end{table}
 
 \section{Attributed HEX}
 

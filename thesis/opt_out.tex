@@ -1,0 +1,107 @@
+\begin{table}[htbp]
+\centering
+\begin{tabular}{c|c|c|c}
+Node & $w_i$ & Edge & $t_{ij}$\\\hline
+diningtable   & 2.1692 & (household, bottle)        & 0.9686\\
+chair         & 1.4113 & (household, pottedplant)   & 1.0023\\
+sofa          & 2.1080 & (household, tvmonitor)     & 0.9444\\
+bottle        & 0.6178 & (household, furniture)     & 0.4723\\
+pottedplant   & 0.8744 & (furniture, diningtable)   & 0.9642\\
+tvmonitor     & 0.4812 & (furniture, chair)         & 0.9579\\
+train         & 2.0026 & (furniture, sofa)          & 0.9367\\
+bus           & 0.0000 & (transport, aeroplane)     & 0.8654\\
+car           & 1.0358 & (transport, boat)          & 0.9185\\
+bicycle       & 0.0000 & (transport, landtransport) & 2.2961\\
+motorbike     & 2.1447 & (landtransport, train)     & 0.8297\\
+aeroplane     & 2.0975 & (landtransport, bus)       & 1.0487\\
+boat          & 1.5493 & (landtransport, car)       & 0.8752\\
+cow           & 1.5618 & (landtransport, bicycle)   & 0.9760\\
+horse         & 0.0000 & (landtransport, motorbike) & 0.9074\\
+sheep         & 0.0000 & (animal, person)           & 0.8808\\
+dog           & 1.8704 & (animal, livestock)        & 0.5204\\
+cat           & 1.9724 & (animal, pet)              & 1.8062\\
+bird          & 3.7825 & (livestock, cow)           & 0.9623\\
+person        & 1.3138 & (livestock, horse)         & 0.9450\\
+household     & 0.6735 & (livestock, sheep)         & 0.9741\\
+furniture     & 1.7698 & (pet, dog)                 & 0.7774\\
+transport     & 0.1756 & (pet, cat)                 & 0.8273\\
+landtransport & 2.9717 & (pet, bird)                & 3.2935\\
+animal        & 2.6498 & &\\
+livestock     & 0.0000 & &\\
+pet           & 4.0644 & &
+\end{tabular}
+\caption{0\% relabelling rate, learned weights}
+\label{tab:0weight}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{c|c|c|c}
+Node & $w_i$ & Edge & $t_{ij}$\\\hline
+diningtable   & 2.1832 & (household, bottle)        & 0.9846\\
+chair         & 1.3210 & (household, pottedplant)   & 1.0215\\
+sofa          & 2.1596 & (household, tvmonitor)     & 0.9575\\
+bottle        & 0.6195 & (household, furniture)     & 0.5110\\
+pottedplant   & 0.9273 & (furniture, diningtable)   & 0.9699\\
+tvmonitor     & 0.7008 & (furniture, chair)         & 0.9891\\
+train         & 2.1006 & (furniture, sofa)          & 0.9622\\
+bus           & 0.0000 & (transport, aeroplane)     & 0.8935\\
+car           & 1.1823 & (transport, boat)          & 0.9540\\
+bicycle       & 0.0000 & (transport, landtransport) & 2.2119\\
+motorbike     & 2.1935 & (landtransport, train)     & 0.8858\\
+aeroplane     & 2.1355 & (landtransport, bus)       & 1.1213\\
+boat          & 1.7257 & (landtransport, car)       & 0.9193\\
+cow           & 1.5908 & (landtransport, bicycle)   & 0.9812\\
+horse         & 0.0000 & (landtransport, motorbike) & 0.9335\\
+sheep         & 0.0000 & (animal, person)           & 0.9133\\
+dog           & 2.0003 & (animal, livestock)        & 0.5164\\
+cat           & 2.0752 & (animal, pet)              & 1.7930\\
+bird          & 2.6603 & (livestock, cow)           & 0.9867\\
+person        & 1.3928 & (livestock, horse)         & 0.9645\\
+household     & 0.7853 & (livestock, sheep)         & 0.9828\\
+furniture     & 1.6832 & (pet, dog)                 & 0.8477\\
+transport     & 0.3454 & (pet, cat)                 & 0.8884\\
+landtransport & 2.9475 & (pet, bird)                & 2.7109\\
+animal        & 2.4981 & &\\
+livestock     & 0.0000 & &\\
+pet           & 3.9751 & &
+\end{tabular}
+\caption{50\% relabelling rate, learned weights}
+\label{tab:50weight}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{c|c|c|c}
+Node & $w_i$ & Edge & $t_{ij}$\\\hline
+diningtable   & 2.2378 & (household, bottle)        & 0.9974\\
+chair         & 1.2302 & (household, pottedplant)   & 1.0097\\
+sofa          & 2.2351 & (household, tvmonitor)     & 0.9947\\
+bottle        & 0.9062 & (household, furniture)     & 0.5250\\
+pottedplant   & 0.8470 & (furniture, diningtable)   & 0.9981\\
+tvmonitor     & 0.5482 & (furniture, chair)         & 1.0003\\
+train         & 2.2922 & (furniture, sofa)          & 0.9981\\
+bus           & 0.0000 & (transport, aeroplane)     & 0.9963\\
+car           & 1.2010 & (transport, boat)          & 0.9972\\
+bicycle       & 0.0000 & (transport, landtransport) & 2.4417\\
+motorbike     & 2.2931 & (landtransport, train)     & 0.9977\\
+aeroplane     & 2.3083 & (landtransport, bus)       & 1.0210\\
+boat          & 1.7288 & (landtransport, car)       & 1.0055\\
+cow           & 1.5191 & (landtransport, bicycle)   & 1.0009\\
+horse         & 0.0000 & (landtransport, motorbike) & 0.9972\\
+sheep         & 0.0000 & (animal, person)           & 0.9949\\
+dog           & 2.2625 & (animal, livestock)        & 0.5153\\
+cat           & 2.2553 & (animal, pet)              & 1.9839\\
+bird          & 0.0000 & (livestock, cow)           & 0.9993\\
+person        & 1.6450 & (livestock, horse)         & 0.9993\\
+household     & 0.8827 & (livestock, sheep)         & 0.9997\\
+furniture     & 1.8698 & (pet, dog)                 & 0.9897\\
+transport     & 0.9849 & (pet, cat)                 & 0.9816\\
+landtransport & 3.3086 & (pet, bird)                & 1.3539\\
+animal        & 3.0661 & &\\
+livestock     & 0.0000 & &\\
+pet           & 4.0960 & &
+\end{tabular}
+\caption{90\% relabelling rate, learned weights}
+\label{tab:90weight}
+\end{table}
