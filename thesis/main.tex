@@ -270,11 +270,9 @@ The derivation above agrees with the general property that the gradient of the l
 
 With CNN as the underlying unary classifier, the overall performance of different variants of the HEX model are compared in \hyperref[tab:cnnacc]{table~\ref{tab:cnnacc}}. These performances are broken down to labels in \hyperref[tab:cnn0acc]{table~\ref{tab:cnn0acc}}, \ref{tab:cnn50acc}, and \ref{tab:cnn90acc}. \hyperref[tab:cnnresp]{Table~\ref{tab:cnnresp}} contains a summary of response of CNN on validation images, broken down to labels. The unary and pairwise weightings learned in stage 3 are shown in \hyperref[tab:cnnunary]{table~\ref{tab:cnnunary}} and \ref{tab:cnnpairwise}. Observations on these results are listed as follows:
 \begin{enumerate}
-\item As discussed under \hyperref[eqn:pn2]{(\ref{eqn:pn2})}, the difference between the accuracy of stage 1 improvement and the original HEX model is little, except under 90\% relabelling rate, in the extended concept space. This sole improvement is because the sigmoid function diminishes the difference between the responses on concepts, when they are all very low (refer to \hyperref[tab:cnnresp]{table~\ref{tab:cnnresp}}). Note that such improvement of numerical stability does not affect the top-1 accuracy.
-\item In the extended state space, stage 2 improvement brings a significant accuracy enhancement for all relabelling rates. Under 50\% relabelling rate, its accuracy leads the original HEX model by 14.49 percentage points. In addition, such improvement is consistent over all labels, as shown in the broken down accuracy in \hyperref[tab:cnn0acc]{table~\ref{tab:cnn0acc}}, \ref{tab:cnn50acc}, and \ref{tab:cnn90acc}. This is a clear sign that the relationships considered in the original HEX model are too weak. Hence, a possible direction of further improvement is to incorporate more relationships.
-
-In the original state space, the accuracy of stage 2 improvement falls significantly below the original HEX model. This ...
-\item The accuracy of stage 3 improvement falls slightly behind stage 2 under 0\% relabelling rate, but takes over as the relabelling rate grows. Under 90\% relabelling rate, stage 3 improvement is the only system to achieve accuracy higher than 10\% with the extended state space.
+\item As a confirmation to \hyperref[eqn:pn2]{(\ref{eqn:pn2})}, the difference between the accuracy of stage 1 improvement and the original HEX model is little.
+\item In the extended state space, stage 2 improvement brings a significant accuracy enhancement for all relabelling rates. Under 50\% relabelling rate, its accuracy leads the original HEX model by 14.49 percentage points. In addition, such improvement is consistent over all labels, as shown in the broken down accuracy in \hyperref[tab:cnn0acc]{table~\ref{tab:cnn0acc}}, \ref{tab:cnn50acc}, and \ref{tab:cnn90acc}. This is a clear sign that the relationships considered in the original HEX model are too weak. Hence, a potential direction for further improvement is to incorporate more relationships. In the original state space, however, the accuracy of stage 2 improvement falls significantly below the original HEX model under 50\% and 90\% relabelling rate. 
+\item The accuracy of stage 3 improvement falls slightly below stage 2 under 0\% relabelling rate, but soon takes over as the relabelling rate grows. Under 90\% relabelling rate, stage 3 improvement is the only system to achieve accuracy higher than 10\% in the extended state space.
 
 It has been noticed that some unary weights are set to zero by optimisation. This corresponds to constant unary contributions on certain nodes. It doesn't indicate zero overall contribution, as their confidence is still encoded in pairwise term of the potential. Concepts with unary weight set to zero received significant accuracy enhancement under high relabelling rate (``bus'', ``bicycle'', ``horse'', ``sheep'', and ``bird''). Under 90\% relabelling rate, all concepts with accuracy greater than 0 received zero unary weight. However, no trend has been found regarding why these nodes receive zero unary weights.
 \item Similar trend is also observed with SVM as the underlying unary classifier. For experimental results, refer to \hyperref[sec:svm]{appendix~\ref{sec:svm}}.
@@ -305,7 +303,7 @@ Stage 2 & 0.7238(0.7957) & 0.6252(0.7470) & 0.3129(0.5908)
 \begin{table}[htbp]
 \centering
 \begin{tabular}{r|c|c|c|c|c|c}
-Concept & Softmax & Original & Stage 2 & Stage 3 & \makecell{Stage 2$-$\\Original} & \makecell{Stage 3$-$\\Stage 2}\\\hline
+Concept & Softmax & \makecell{Original\\HEX} & Stage 2 & Stage 3 & \makecell{Stage 2$-$\\Original} & \makecell{Stage 3$-$\\Stage 2}\\\hline
 diningtable   & 0.4821 & 0.5357 & 0.5535 & 0.5535 & 0.0178 & 0.0000\\
 chair         & 0.4666 & 0.3111 & 0.3777 & 0.3555 & 0.0666 & -0.0222\\
 sofa          & 0.4310 & 0.3275 & 0.3793 & 0.3620 & 0.0518 & -0.0173\\
@@ -334,7 +332,7 @@ animal        & N/A    & 0.8888 & 0.8876 & 0.8863 & -0.0012 & -0.0013\\
 livestock     & N/A    & 0.5741 & 0.6000 & 0.6000 & 0.0259 & 0.0000\\
 pet           & N/A    & 0.8594 & 0.8758 & 0.8735 & 0.0164 & -0.0023
 \end{tabular}
-\caption{CNN, extended state space, 0\% relabelling rate}
+\caption{With CNN as the underlying unary classifier, comparison of accuracy of variants of the HEX model (columns) broken down to concepts. The relabelling rate is 0\%, and the classification is in the extended state space. The rightmost two columns contain the difference between the accuracy of stage 2 and original, and stage 3 and 2, respectively. Note that the accuracy of the softmax baseline is not available for abstract concepts (lower), as all images are labelled to bottom-level concepts.}
 \label{tab:cnn0acc}
 \end{table}
 
@@ -370,7 +368,7 @@ animal        & N/A    & 0.8825 & 0.8786 & 0.8735 & -0.0039 & -0.0051\\
 livestock     & N/A    & 0.5419 & 0.6129 & 0.6967 & 0.071 & 0.0838\\
 pet           & N/A    & 0.8337 & 0.8548 & 0.8548 & 0.0211 & 0.0000
 \end{tabular}
-\caption{CNN, extended state space, 50\% relabelling rate}
+\caption{Comparison of accuracy broken down to concepts, under 50\% relabelling rate, in the extended state space, with CNN as the underlying classifier. Note that: 1. Stage 2 improvement managed to increase the accuracy by more than 10 percentage points in more than half of bottom-level concepts. 2. The accuracy on abstract concepts are consistent for all models, showing sufficiently high confidence on nodes corresponding to abstract concepts. 3. Stage 2 and 3 have similar overall accuracy, but the broken down accuracy are very different. The accuracy on most concepts dropped, but the accuracy corresponding to nodes whose unary weights are set to 0 received significant accuracy enhancement.}
 \label{tab:cnn50acc}
 \end{table}
 
@@ -406,7 +404,7 @@ animal        & N/A    & 0.8403 & 0.8799 & 0.8748 & 0.0396 & -0.0051\\
 livestock     & N/A    & 0.6064 & 0.6451 & 0.7096 & 0.0387 & 0.0645\\
 pet           & N/A    & 0.8337 & 0.8665 & 0.8711 & 0.0328 & 0.0046
 \end{tabular}
-\caption{CNN, extended state space, 90\% relabelling rate}
+\caption{Comparison of accuracy broken down to concepts, under 90\% relabelling rate, in the extended state space, with CNN as the underlying classifier. Concepts that received accuracy boost are those with zero unary weights.}
 \label{tab:cnn90acc}
 \end{table}
 
@@ -442,7 +440,7 @@ animal        & $0.8442\pm0.2787$ & $0.8448\pm0.2804$ & $0.8467\pm0.2775$\\
 livestock     & $0.6514\pm0.3555$ & $0.6260\pm0.3626$ & $0.6530\pm0.3550$\\
 pet           & $0.8157\pm0.3015$ & $0.8047\pm0.3065$ & $0.8056\pm0.3067$
 \end{tabular}
-\caption{CNN responses}
+\caption{Under different relabelling rates, with fully trained CNN, the mean and standard deviation of sigmoid-transformed response on validation images, broken down to concepts.}
 \label{tab:cnnresp}
 \end{table}
 
