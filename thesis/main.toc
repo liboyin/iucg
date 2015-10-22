@@ -1,0 +1,23 @@
+\contentsline {chapter}{Acknowledgements}{v}{chapter*.1}
+\contentsline {chapter}{Abstract}{vii}{chapter*.2}
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}
+\contentsline {chapter}{\numberline {2}Related Works}{3}{chapter.2}
+\contentsline {chapter}{\numberline {3}The Original HEX Model}{5}{chapter.3}
+\contentsline {section}{\numberline {3.1}Structure}{5}{section.3.1}
+\contentsline {section}{\numberline {3.2}Observations}{7}{section.3.2}
+\contentsline {section}{\numberline {3.3}Problems}{8}{section.3.3}
+\contentsline {chapter}{\numberline {4}Reimplementation}{11}{chapter.4}
+\contentsline {section}{\numberline {4.1}Dataset}{11}{section.4.1}
+\contentsline {section}{\numberline {4.2}Algorithms}{11}{section.4.2}
+\contentsline {section}{\numberline {4.3}Experiments}{12}{section.4.3}
+\contentsline {chapter}{\numberline {5}Improvements}{17}{chapter.5}
+\contentsline {section}{\numberline {5.1}Algorithms}{17}{section.5.1}
+\contentsline {section}{\numberline {5.2}Experiments}{20}{section.5.2}
+\contentsline {section}{\numberline {5.3}Scalability}{28}{section.5.3}
+\contentsline {section}{\numberline {5.4}Relationship to Probabilistic HEX}{28}{section.5.4}
+\contentsline {chapter}{\numberline {6}Conclusion and Future Work}{29}{chapter.6}
+\contentsline {chapter}{\numberline {A}Supplementary Materials}{31}{appendix.A}
+\contentsline {section}{\numberline {A.1}HEX Fails with Positive Unary Inputs}{31}{section.A.1}
+\contentsline {section}{\numberline {A.2}CNN and SVM Setup}{31}{section.A.2}
+\contentsline {section}{\numberline {A.3}Experiments with SVM as Underlying Unary Classifier}{32}{section.A.3}
+\contentsline {chapter}{References}{39}{appendix*.4}
