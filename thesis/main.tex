@@ -4,7 +4,8 @@
 \usepackage[palatino]{anuthesis}
 \usepackage{csquotes}
 \usepackage{graphicx}
-\usepackage[ocgcolorlinks]{hyperref}  % colour links on display only
+%\usepackage[hidelinks]{hyperref}
+\usepackage[ocgcolorlinks]{hyperref}
 \usepackage{makecell}
 \usepackage{makeidx}
 
@@ -35,13 +36,13 @@
 This work is dedicated to: & Dr.\ Scott Sanner\\
  & for supervising my first research project in 2013/14\\
  & Miss.\ Qianyu Zhang\\
- & for being an important step on my personal Odyssey\\
+ & for being an important step in my personal Odyssey\\
 With special thanks to: & Dr.\ Lin Yin and Mrs.\ Yichun Zheng\\
  & my parents\\
  & Dr.\ Lexing Xie and Dr.\ Xuming He (NICTA)\\
  & my supervisors\\
  & Bruce Hall and Residents\\
- & for being my home in the past 1.5 years
+ & for being my home and family in the past 1.5 years
 \end{tabular}
 \end{table}
 
@@ -51,7 +52,7 @@ With special thanks to: & Dr.\ Lin Yin and Mrs.\ Yichun Zheng\\
 \label{cha:abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-This work considers image classification problem when there is semantic structure in the concept space. An effective framework to solve such problem, the HEX model, has been discussed in a prior work \cite{deng2014large}. The HEX framework models the hierarchical, exclusive, and independence relationship within the extended concept space of dataset with a graphical model. By interpreting the semantic graphical model as a conditional random field (CRF), efficient structured inference algorithms have been developed. This work identifies the inadequacy of the original HEX model under the realistic labelling assumption, when a high percentage of images are labelled not to specific concepts, but to more general ones. Improvements of this work are delivered in multiple stages, by gradually allowing more and stronger relationships in the HEX model. Experimental results show significant improvements over the baseline and the original HEX model.
+This work considers image classification problem when there is semantic structure in the concept space. An effective framework to solve such problem, the HEX model, has been discussed in a prior work \cite{deng2014large}. The HEX framework models the hierarchical, exclusive, and independence relationship within the extended concept space of dataset with a graphical model. By interpreting the semantic graphical model as a conditional random field (CRF), efficient structured inference algorithms have been developed. This work identifies the weakness of the original HEX model under the realistic labelling assumption, when a high percentage of images are labelled not to specific concepts, but to more general ones. Improvements of this work are delivered in multiple stages, by gradually allowing more and stronger relationships in the HEX model. Experimental results show significant improvements over the baseline and the original HEX model.
 
 \cleardoublepage
 \pagestyle{headings}
