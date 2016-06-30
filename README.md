@@ -1,8 +1,9 @@
-# iucg
-Image Understanding with Concept Graph
+# Improving Image Understanding with Concept Relation Graph
 
-This is an ongoing honours project at the Australian National University.
+This is a finished honours project at the Australian National University.
 
-In this project, we aim to improve the accuracy of image classification by combining a convolutional neural network with a graphical model describing the relationship between concepts and objects in a scene.
+This project is based on Deng et al's ECCV 2014 paper: Large-Scale Object Classification using Label Relationship Graph.
 
-This project is based on Deng et al's ECCV 2014 paper: Large-Scale Object Classification using Label Relationship Graph, but on PASCAL12 dataset.
+I identified the weakness of the original work under imbalanced and coarsely-labelled training dataset, and improved the framework by considering additional between-concept information. I also experimentally allowed learning on all components of the system.
+
+The improved system achieved 15% improvement over the original work in classification accuracy.
